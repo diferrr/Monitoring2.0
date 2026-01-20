@@ -1,0 +1,3006 @@
+<!doctype html>
+<html lang="ro">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Monitoring PTC</title>
+    <script>window.CAN_EDIT={{ can_edit|yesno:"true,false" }};</script>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+
+    <!-- РАННЯЯ инициализация темы: ставим data-theme ДО рендера страницы -->
+    <script>
+        (function() {
+            let stored = null;
+            try {
+                stored = localStorage.getItem('theme');
+            } catch (e) {
+                stored = null;
+            }
+            const initialTheme = (stored === 'dark' || stored === 'light') ? stored : 'light';
+            document.documentElement.setAttribute('data-theme', initialTheme);
+        })();
+    </script>
+
+
+    <style>
+        :root {
+            --sidebar-width: 280px;
+            --sidebar-min: 180px;
+            --sidebar-max: 600px;
+            --resizer-width: 24px;
+            --bg-sidebar: #f7f7fb;
+            --bg-content: #ffffff;
+            --border: #e2e2ea;
+            --accent: #7291bf;
+            --text: #1f1f29;
+            --muted: #6b6b7a;
+
+                /*  Высота ШАПКИ */
+            --nav-height: 70px;
+        }
+
+
+        [data-theme="dark"] {
+            --bg-sidebar: #212529;
+            --bg-content: #495057;
+            --border: #343a40;
+            --accent: #7291bf;
+            --text: #f8f9fa;
+            --muted: #ced4da;
+        }
+
+
+        [data-theme="dark"] .topbar {
+            background: var(--bg-content);
+            color: var(--text);
+            border-bottom: 1px solid var(--border);
+        }
+        [data-theme="dark"] .table-wrapper {
+            background: var(--bg-content);
+            border-color: var(--border);
+            box-shadow: 0 2px 8px 0 rgba(0,0,0,0.3);
+        }
+        [data-theme="dark"] table.data-table {
+            background: var(--bg-content);
+        }
+        [data-theme="dark"] thead th {
+            background: linear-gradient(90deg, #2c3034 0%, #3c424a 100%);
+            color: #fff;
+            border-right: 1px solid var(--border);
+        }
+        [data-theme="dark"] tbody tr:nth-child(even) td {
+            background: #3c4349;
+            color: var(--text);
+        }
+        [data-theme="dark"] tbody tr:nth-child(odd) td {
+            background: #343a40;
+            color: var(--text);
+        }
+        [data-theme="dark"] tbody tr:hover td {
+            background: #495057;
+            color: var(--text);
+        }
+        [data-theme="dark"] .search-input {
+            background-color: #3c4349;
+            color: var(--text);
+            border-color: var(--border);
+        }
+        [data-theme="dark"] .refresh-btn {
+            background: var(--accent);
+            color: var(--text);
+        }
+        [data-theme="dark"] input,
+        [data-theme="dark"] select {
+            background-color: #3c4349;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        [data-theme="dark"] .columns-group {
+            background: #343a40;
+            border-color: var(--border);
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            color: var(--text);
+            background: var(--bg-content);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+            line-height: 1.4
+        }
+
+
+        .navbar {
+            height: var(--nav-height);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 12px;
+            background: var(--accent);
+            color: #fff;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 3;
+        }
+        .navbar .toggle-btn {
+            color: #fff;
+        }
+        .navbar .season-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin: 0;
+        }
+
+        /* Вертикальный разделитель перед блоком Raion в шапке */
+        .navbar .raion-group {
+            border-left: 1px solid rgba(255,255,255,0.7);
+            padding-left: 14px;   /* отступ внутри после линии */
+            margin-left: 12px;    /* небольшой зазор от блока сезонов */
+        }
+
+        /* В тёмной теме — та же линия, но по цвету текста */
+        [data-theme="dark"] .navbar .raion-group {
+            border-left-color: rgba(248,249,250,0.7);
+        }
+
+
+        /* ЛЕЙБЛЫ в шапке — без прямоугольной обводки */
+        .navbar .season-group label {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0 4px;
+            border-radius: 0;
+            cursor: pointer;
+            color: #fff;
+            background: transparent;
+            border: none;
+            font-size: 13px;
+        }
+        /* Радиокнопки в шапке — чуть крупнее */
+        .navbar .season-group input[type="radio"] {
+            margin: 0;
+            accent-color: #0d6efd;   /* синий (Bootstrap primary) */
+            transform: scale(1.5);   /* размер оставляем увеличенным */
+        }
+
+        .navbar .season-group input[type="radio"]:checked + span {
+            color: #fff;
+            font-weight: 600;
+        }
+        .navbar .search-input {
+            background-color: rgba(255,255,255,0.9);
+            color: #000;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 13px;
+        }
+        /* Маленькие кнопки в шапке (Export Excel) */
+        .navbar .refresh-btn {
+            padding: 2px 10px;
+            font-size: 14px;
+            line-height: 1.2;
+            background: transparent;
+            color: #ffffff;
+            border-radius: 4px;
+            border: 1px solid #ffffff;   /* тонкая белая рамка */
+        }
+
+        /* Конкретно большая кнопка Reactualizare — рамка и чуть больше */
+        .navbar #refreshBtn {
+            padding: 15px 20px;          /* выше и шире */
+            font-size: 22px;
+            line-height: 1;
+            font-weight: 700;
+            background: transparent;     /* фон */
+            border-radius: 6px;
+            border: 3px solid #ffffff;   /* толстая белая рамка */
+            margin-left: 110px;          /* ← двигаем вправо */
+            color: #ffffff;              /* белый текст */
+            transition: 0.2s ease;       /* плавный hover */
+        }
+
+        /* ---- ЭФФЕКТ ПРИ НАВЕДЕНИИ ---- */
+        .navbar #refreshBtn:hover {
+            background: #ffffff;         /* белая заливка */
+            color: #000000;              /* чёрный текст */
+            cursor: pointer;             /* рука */
+        }
+
+        /* Темная тема */
+        [data-theme="dark"] .navbar {
+            background: #343a40;
+            color: var(--text);
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* В темной теме справа лейблы */
+        [data-theme="dark"] .navbar .season-group label {
+            color: var(--text);
+            background: transparent;
+            border: none;
+        }
+
+        /* Белое поле поиска в темной теме */
+        [data-theme="dark"] .navbar .search-input {
+            background-color: #ffffff;
+            color: #000000;
+            border: 1px solid #ced4da;
+        }
+
+        /* Для кнопок outline в тёмной теме */
+        [data-theme="dark"] .navbar .refresh-btn {
+            background: transparent;
+            color: var(--text);
+            border-color: var(--text);
+        }
+
+        [data-theme="dark"] .navbar #refreshBtn {
+            background: transparent;
+            border-color: #ffffff; /* белая рамка */
+            color: #ffffff;
+        }
+
+        /* Ховер для большой кнопки Reactualizare в ТЁМНОЙ теме */
+        [data-theme="dark"] .navbar #refreshBtn:hover {
+            background: #ffffff;              /* белый фон */
+            color: #000000;                   /* чёрный текст */
+            border-color: #ffffff;            /* белая рамка */
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.35);
+        }
+
+
+        /* Лейблы */
+        .navbar .form-check-label {
+            color: #fff;
+        }
+
+        [data-theme="dark"] .navbar .form-check-label {
+            color: var(--text);
+        }
+
+        /* Старую панель выключаем */
+        .topbar {
+            display: none !important;
+        }
+
+
+        #hide-btn {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 25px;
+            border-radius: 0;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #show-btn {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 25px;
+            border-radius: 0;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            padding: 0;
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns:var(--sidebar-width) var(--resizer-width) 1fr;
+            grid-template-rows:auto;
+            height: calc(100vh - var(--nav-height));
+            width: 100%;
+            overflow: hidden
+        }
+
+        .layout.collapsed {
+            grid-template-columns:0 var(--resizer-width) 1fr
+        }
+
+        aside.sidebar {
+            overflow: auto;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border)
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border)
+        }
+
+        /* Заголовок "SETĂRI" в боковой панели */
+        .sidebar-header h2 {
+            margin: 0;              /* убираем внешние отступы вокруг заголовка */
+            font-size: 18px;        /* увеличиваем размер шрифта до 18px */
+            font-weight: 600;       /* делаем текст полужирным */
+            color: #000000;         /* в СВЕТЛОЙ теме — чёрный цвет текста */
+            letter-spacing: .3px;   /* немного увеличиваем расстояние между буквами */
+            text-transform: uppercase; /* переводим текст в ВЕРХНИЙ регистр (SETĂRI) */
+        }
+
+        /* ПЕРЕОПРЕДЕЛЕНИЕ для тёмной темы */
+        [data-theme="dark"] .sidebar-header h2 {
+            color: #ffffff;         /* в ТЁМНОЙ теме — делаем заголовок белым */
+        }
+
+
+        .sidebar-body {
+            padding: 12px 14px
+        }
+
+       /* Общий стиль всех блоков в сайдбаре (Coloane PTC, Condiții, T1min, T4min и т.д.) */
+        .columns-group {
+            margin-top: 8px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 10px;
+            background: #fff;
+        }
+
+        /* Тёмная тема — фон и рамка для всех fieldset в сайдбаре */
+        [data-theme="dark"] .columns-group {
+            background: #343a40;
+            border-color: var(--border);
+        }
+
+        /* ===== Специально для блока Condiții и его внутренних блоков ===== */
+
+        /* Внешний fieldset "Condiții" */
+        #conditionsBlock {
+            background: #ffffff;          /* светлая тема: белый фон */
+        }
+
+        /* Внутренние блоки T1min/T4min/ΔT min/... внутри Condiții */
+        #conditionsBlock > .columns-group {
+            background: #DCDCDC;          /* светлая тема: серый фон внутри рамки */
+        }
+
+        /* Тёмная тема: внешний Condiții как обычная тёмная панель */
+        [data-theme="dark"] #conditionsBlock {
+            background: #343a40;
+        }
+
+        /* Тёмная тема: внутренние блоки Condiții — ЧЁРНЫЙ фон и БЕЛАЯ рамка */
+        [data-theme="dark"] #conditionsBlock > .columns-group {
+            background: #000000;
+            border-color: #ffffff;
+        }
+
+        /* ТЁМНАЯ ТЕМА: поля ввода внутри Condiții — белые, цифры тёмные */
+        [data-theme="dark"] #conditionsBlock input[type="number"] {
+            background-color: #ffffff; /* белое поле ввода */
+            color: #000000;            /* тёмные цифры внутри */
+            border: 1px solid #ffffff; /* чтобы не было серой рамки */
+        }
+
+        /* Заголовки всех блоков в боковой панели (Coloane PTC, Condiții, T1min, T4min и т.д.) */
+        .columns-group legend {
+            font-size: 16px;
+            font-weight: 700;
+            color: #000000;
+            padding: 0 4px;
+            letter-spacing: .2px;
+
+            /* НОВОЕ: делаем заголовок flex, чтобы Alarma встала справа */
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* подпись Alarma + чекбокс */
+        .t4-alarm-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+        }
+
+
+        /* В ТЁМНОЙ теме эти же заголовки делаем белыми */
+        [data-theme="dark"] .columns-group legend {
+            color: #ffffff;       /* белый текст заголовка в тёмной теме */
+        }
+
+        .columns-list {
+            column-count: 2;
+            column-gap: 12px;
+            max-height: 40vh;
+            overflow: auto;
+            margin-top: 6px;
+        }
+
+        /* Подписи чекбоксов в списке колонок (Adresa, Q, G1, G2, ... ) */
+        .columns-list label {
+            display: flex;          /* выравниваем галочку и текст по одной линии */
+            align-items: center;    /* вертикально центрируем содержимое */
+            gap: 6px;               /* расстояние между галочкой и текстом */
+            font-size: 16px;        /* делаем текст немного крупнее (было 13px) */
+            font-weight: 700;
+            color: var(--text);     /* цвет берём из переменной темы */
+            user-select: none;      /* запрещаем выделение текста мышкой случайно */
+            white-space: nowrap;    /* не переносим подпись на новую строку */
+            break-inside: avoid;    /* не разрываем label между колонками */
+            margin-bottom: 6px;     /* небольшой отступ снизу между строчками */
+        }
+
+        .columns-list input[type="checkbox"] {
+            margin: 0;
+            accent-color: var(--accent);
+        }
+
+        /* ЕДИНЫЙ цвет галочек в боковой панели:
+        и в "Coloane PTC", и во всех блоках "Condiții" */
+        .sidebar .columns-group input[type="checkbox"] {
+            accent-color: #4169E1;   /* ярко-синий цвет галочки */
+        }
+
+
+
+
+        .resizer {
+            cursor:  col-resize;
+            background: var(--accent);      /* тот же цвет, что и шапка */
+            position: relative;
+        }
+
+            /* В тёмной теме вертикальный резайзер делаем серым,
+            не трогая другие элементы с --accent */
+        [data-theme="dark"] .resizer {
+            background: #6c757d;   /*  серый  */
+        }
+
+
+        /* Значок в ресайзере: по умолчанию « (панель открыта) */
+        .resizer::after {
+            content: "«";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: #ffffff;   /* стрелка белая */
+        }
+
+        /* Когда сайдбар свернут – стрелка вправо » */
+        .layout.collapsed .resizer::after {
+            content: "»";
+        }
+
+        /* Ховер/клик – можно оставить тот же цвет, просто без фона */
+        .resizer:hover::after,
+        .resizer:active::after {
+            color: #ffffff;
+        }
+
+
+
+        body.resizing, body.resizing * {
+            cursor: col-resize !important;
+            user-select: none
+        }
+
+        main.main {
+            overflow: auto;
+            background: var(--bg-content);
+            display: flex;
+            flex-direction: column;
+            min-width: 0
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 12px;
+            border-bottom: 1px solid var(--border);
+            background: #fff;
+            position: sticky;
+            top: 0;
+            z-index: 2
+        }
+
+        .topbar .toggle-btn {
+            padding: 3px 8px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 13px;
+            cursor: pointer
+        }
+
+        .topbar .toggle-btn:hover {
+            background: rgba(0, 0, 0, .06)
+        }
+
+        .topbar .search-input {
+            flex: 0 1 320px;
+            max-width: 40vw;
+            min-width: 160px;
+            padding: 5px 10px;
+            font-size: 13px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            outline: none
+        }
+
+        .topbar .search-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(91, 124, 250, .15)
+        }
+
+        .topbar .refresh-btn {
+            padding: 4px 10px;
+            border: none;
+            background: var(--accent);
+            color: #fff;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer
+        }
+
+        /* Provide minimal styling for the theme toggle.  The form-switch
+         * classes come from Bootstrap. We add margin-left to push the
+         * toggle to the right side of the top bar. */
+        .topbar .form-switch {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+        }
+
+        .season-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: 4px
+        }
+
+        .season-group label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: #374151;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            font-size: 13px
+        }
+
+        .season-group input[type="radio"] {
+            margin: 0;
+            accent-color: var(--accent)
+        }
+
+        .season-group input[type="radio"]:checked + span {
+            color: #1f2937;
+            font-weight: 600
+        }
+
+        .content-inner {
+            padding: 16px;
+            min-width: 0
+        }
+
+        .table-wrapper {
+            position: relative;
+            overflow: auto;
+            height: 85vh;
+            max-height: 85vh;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 0 2px 8px 0 rgba(93, 107, 166, 0.03)
+        }
+
+        .error-box {
+            position: absolute;
+            inset: 12px;
+            border: 1px dashed #e66;
+            background: #fff7f7;
+            color: #b00;
+            border-radius: 8px;
+            font: 14px/1.4 system-ui;
+            padding: 16px;
+            text-align: center;
+            display: none
+        }
+
+        .error-box.show {
+            display: flex;
+            align-items: center;
+            justify-content: center
+        }
+
+        table.data-table {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+            font-size: 14px;
+            background: #fafaff;
+            min-width: 960px
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+            background: var(--accent);
+            border-bottom: 2px solid var(--accent);
+            border-right: 1px solid var(--border);
+            padding: 6px 10px;
+            text-align: left;
+            font-weight: 700;
+            color:#fff;
+            letter-spacing: .05em;
+            font-size: 15px;
+            z-index: 1;
+            white-space: nowrap
+        }
+
+        thead tr + tr th {
+            top: 36px
+        }
+
+        thead th:last-child {
+            border-right: none
+        }
+
+        thead th[data-col-group] {
+            text-align: center;
+            vertical-align: middle
+        }
+
+        tbody td {
+            border-top: 1px solid var(--border);
+            border-right: 1px solid var(--border);
+            vertical-align: top;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        tbody td:last-child {
+            border-right: none;
+        }
+
+        tbody tr:nth-child(even) td {
+            background: #f5f6fd;
+        }
+
+        tbody tr:nth-child(odd) td {
+            background: #fff;
+        }
+
+        /* лёгкая анимация ТОЛЬКО при наведении, а не при смене темы */
+        tbody tr:hover td {
+            background: #e9edfb;
+            transition: background-color .15s ease-out;
+        }
+
+
+        a, a:hover, a:focus, a:active {
+            text-decoration: none
+        }
+
+
+        a.ptc-link {
+            color: var(--text) !important;
+            text-decoration: underline !important;
+            font-size: 17px
+        }
+
+        th.sortable {
+            cursor: pointer;
+            user-select: none
+        }
+
+        th .sort-indicator {
+            display: inline-block;
+            margin-left: 6px;
+            font-size: 12px;
+            opacity: .7
+        }
+
+        th.sorted-asc .sort-indicator::after {
+            content: "▲"
+        }
+
+        th.sorted-desc .sort-indicator::after {
+            content: "▼"
+        }
+
+        td[data-col="address"], th[data-col="address"] {
+            text-align: left
+        }
+
+        .pump-shape {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            margin: 2px;
+            vertical-align: middle;
+            cursor: pointer;
+            font-size: 26px;
+            line-height: 1;
+            text-align: center;
+            border-radius: 6px
+        }
+
+        #ptc-total {
+            margin-top: 6px;
+            font-weight: 600;
+            color: #222
+        }
+
+        /* В тёмной теме TOTAL делаем светлым */
+        [data-theme="dark"] #ptc-total {
+            color: #FFFFFF;
+        }
+
+
+        #conditionsBlock.is-disabled {
+            opacity: .55;
+        }
+
+        .em-red, .em-red:visited {
+            color: #d21919 !important;
+            font-weight: 700;
+        }
+
+        @media (max-width: 720px) {
+            :root {
+                --sidebar-width: 240px
+            }
+        }
+
+
+
+        .ptc-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .ptc-btn {
+            display: inline-block;
+            padding: 0 4px;
+            border: none;
+            background: none;
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 15px;
+            text-decoration: none;
+            line-height: 1;
+            cursor: pointer;
+            transition: color 0.15s ease;
+        }
+
+        .ptc-btn:hover {
+            color: #0031ff;
+            text-decoration: underline;
+        }
+
+        .ptc-btn:focus {
+            outline: none;
+        }
+
+
+        .ptc-link {
+            color: var(--text) !important;
+            text-decoration: underline !important;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+
+        table.data-table td:not([data-col="sursa"]):not([data-col="pompa"]) a:not(.em-red):not(.ptc-btn):not(.ptc-link) {
+            color: var(--text);
+        }
+
+        /* «N» зелёная, если есть комментарии */
+        .ptc-btn.comment-btn.has-comments {
+            color: #00fb29 !important; /* яркий green */
+
+        }
+
+        .ptc-btn.comment-btn.has-comments:hover {
+            color: #00fb29 !important; /* темнее при hover */
+
+        }
+
+        /* === 220V dot (sursa) — BIG === */
+        .dot-220 {
+            font-size: 30px; /* ← УВЕЛИЧИВАЕТ РАЗМЕР КРУЖКА */
+            line-height: 1;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .dot-220.on {
+            color: #0bc63d;
+        }
+
+        /* ярко-зелёный */
+        .dot-220.off {
+            color: #e03131;
+        }
+
+        /* Футер: чёрный текст в светлой теме, белый в тёмной */
+        .app-footer {
+            color: #000000;
+        }
+
+        [data-theme="dark"] .app-footer {
+            color: #ffffff;
+        }
+
+
+        /* === 1–2. Выравнивание и размер шрифта для выбранных колонок === */
+
+        /* PTC и Adresa — немного крупнее */
+        table.data-table th[data-col="ptc"],
+        table.data-table td[data-col="ptc"],
+        table.data-table th[data-col="address"],
+        table.data-table td[data-col="address"] {
+        font-size: 16px;
+        }
+
+        /* Остальные числовые колонки: Q, G1, G2, ΔG, Δ%, T*, Tacm, Gacm, Gacm-P, ΔGacm, Gadaos, Data/Ora */
+        table.data-table th[data-col="q1"],
+        table.data-table th[data-col="g1"],
+        table.data-table th[data-col="g2"],
+        table.data-table th[data-col="dg"],
+        table.data-table th[data-col="dg_pct"],
+        table.data-table th[data-col="t1"],
+        table.data-table th[data-col="t2"],
+        table.data-table th[data-col="dt"],
+        table.data-table th[data-col="t31"],
+        table.data-table th[data-col="t32"],
+        table.data-table th[data-col="t41"],
+        table.data-table th[data-col="t42"],
+        table.data-table th[data-col="t43"],
+        table.data-table th[data-col="t44"],
+        table.data-table th[data-col="tacm"],
+        table.data-table th[data-col="gacm"],
+        table.data-table th[data-col="gacm_p"],
+        table.data-table th[data-col="dgacm_val"],
+        table.data-table th[data-col="g_adaos"],
+        table.data-table th[data-col="time"],
+        table.data-table td[data-col="q1"],
+        table.data-table td[data-col="g1"],
+        table.data-table td[data-col="g2"],
+        table.data-table td[data-col="dg"],
+        table.data-table td[data-col="dg_pct"],
+        table.data-table td[data-col="t1"],
+        table.data-table td[data-col="t2"],
+        table.data-table td[data-col="dt"],
+        table.data-table td[data-col="t31"],
+        table.data-table td[data-col="t32"],
+        table.data-table td[data-col="t41"],
+        table.data-table td[data-col="t42"],
+        table.data-table td[data-col="t43"],
+        table.data-table td[data-col="t44"],
+        table.data-table td[data-col="tacm"],
+        table.data-table td[data-col="gacm"],
+        table.data-table td[data-col="gacm_p"],
+        table.data-table td[data-col="dgacm_val"],
+        table.data-table td[data-col="g_adaos"],
+        table.data-table td[data-col="time"] {
+            text-align: center;   /* центр по горизонтали ТОЛЬКО для этих колонок */
+            font-size: 15px;      /* чуть крупнее, чем общий 14px */
+        }
+
+        /* === 3. Более компактные строки таблицы === */
+        table.data-table thead th {
+            padding: 3px 8px;  /* шапка чуть ниже */
+        }
+
+        table.data-table tbody td {
+            padding: 1px 4px;   /* меньше по горизонтали и вертикали */
+            line-height: 2;   /* убираем "воздух" вокруг текста */
+            font-size: 13px;    /* можно чуть уменьшить шрифт внутри таблицы */
+        }
+
+        table.data-table td.no-data-cell {
+            font-size: 26px !important;   /* можно 24, 28 — как хочешь */
+            font-weight: 700;
+            text-align: left;
+            vertical-align: top;
+            padding: 8px 12px;
+        }
+
+        /* Оранжевая рамка для ячеек с T4 при включённой Alarma */
+        td.limit-alarm-cell {
+            box-shadow: inset 0 0 0 2px orange;
+            border-radius: 4px;
+        }
+
+        .legend-with-master {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .cond-master-label {
+            display: inline-flex;
+            align-items: center;
+            margin: 0;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .cond-master-label input[type="checkbox"] {
+            transform: scale(1.1);
+            margin: 0;
+        }
+
+
+    </style>
+
+
+</head>
+<body>
+
+<nav class="navbar" id="mainNav">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+
+        <!-- Кнопка нужна для JS, но прячем её визуально -->
+        <button id="toggleSidebar"
+                class="toggle-btn"
+                type="button"
+                aria-pressed="false"
+                aria-controls="sidebar"
+                style="display:none;">&lt;&lt;
+        </button>
+
+        <!-- Логотип / название слева -->
+        <a href="http://10.1.1.248:1010/"
+           class="navbar-brand text-white fw-bold me-3 scada-link">
+            SCADA Portal
+        </a>
+
+
+        <!-- Большая кнопка Reactualizare -->
+        <button id="refreshBtn" class="refresh-btn me-3" type="button">
+            Reactualizare
+        </button>
+
+        <!-- Сезон: Iarnă / Vară / Toate -->
+        <fieldset class="season-group ms-5" role="radiogroup" aria-label="Sezon">
+            <label>
+                <input type="radio" name="season" value="Iarna" id="season-iarna">
+                <span>Iarnă</span>
+            </label>
+            <label>
+                <input type="radio" name="season" value="Vara" id="season-vara">
+                <span>Vară</span>
+            </label>
+            <label>
+                <input type="radio" name="season" value="Toate" id="season-toate">
+                <span>Toate</span>
+            </label>
+        </fieldset>
+
+        <!-- Блок Raion: Toate / 1 / 2 / 3 / 4 / 5 -->
+        <div class="season-group raion-group ms-4">
+            <span>Raion:</span>
+            <label><input type="radio" name="raion" value="toate" checked><span>Toate</span></label>
+            <label><input type="radio" name="raion" value="1"><span>1</span></label>
+            <label><input type="radio" name="raion" value="2"><span>2</span></label>
+            <label><input type="radio" name="raion" value="3"><span>3</span></label>
+            <label><input type="radio" name="raion" value="4"><span>4</span></label>
+            <label><input type="radio" name="raion" value="5"><span>5</span></label>
+        </div>
+
+        <!-- Поиск -->
+        <input type="text"
+               id="searchInput"
+               class="search-input ms-3"
+               placeholder="Introduceți PTC sau adresă">
+
+        <!-- Кнопка Export Excel -->
+        <button id="exportExcel" class="refresh-btn ms-2" type="button">
+            Export Excel
+        </button>
+
+
+        <!-- Счётчик объектов (например: 404 obiecte) -->
+        <span id="objectCounter" class="text-white ms-3 small"></span>
+    </div>
+
+    <!-- Переключатель светлая / тёмная тема справа -->
+    <div class="d-flex align-items-center">
+        <label class="form-check-label text-white me-2" for="themeSwitch">
+            Temă luminoasă
+        </label>
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="themeSwitch">
+            <label class="form-check-label" for="themeSwitch">
+                Temă întunecată
+            </label>
+        </div>
+    </div>
+</nav>
+
+
+<div class="layout" id="layout">
+    <aside class="sidebar" id="sidebar" aria-label="Боковая панель">
+        <div class="sidebar-header"><h2>SETĂRI</h2></div>
+        <div class="sidebar-body">
+            <fieldset class="columns-group">
+                <legend>Coloane PTC</legend>
+                <div class="columns-list" id="columnsList">
+                    <label><input type="checkbox" value="address" checked> Adresa</label>
+                    <label><input type="checkbox" value="q1" checked> Q</label>
+                    <label><input type="checkbox" value="g1" checked> G1</label>
+                    <label><input type="checkbox" value="g2" checked> G2</label>
+                    <label><input type="checkbox" value="dg" checked> dG</label>
+                    <label><input type="checkbox" value="dg_pct" checked> Δ%</label>
+                    <label><input type="checkbox" value="t1" checked> T1</label>
+                    <label><input type="checkbox" value="t2" checked> T2</label>
+                    <label><input type="checkbox" value="dt" checked> dT</label>
+
+                    <label><input type="checkbox" value="t31" checked> T31</label>
+                    <label><input type="checkbox" value="t32" checked> T32</label>
+
+                    <label><input type="checkbox" value="t41" checked> T41</label>
+                    <label><input type="checkbox" value="t42" checked> T42</label>
+                    <label><input type="checkbox" value="t43" checked> T43</label>
+                    <label><input type="checkbox" value="t44" checked> T44</label>
+
+                    <label><input type="checkbox" value="tacm" checked> Tacm</label>
+                    <label><input type="checkbox" value="gacm" checked> Gacm</label>
+                    <label><input type="checkbox" value="gacm_p" checked> Gacm-P</label>
+                    <label><input type="checkbox" value="dgacm_val" checked> ΔGacm</label>
+                    <label><input type="checkbox" value="g_adaos" checked> Gadaos</label>
+                    <label><input type="checkbox" value="sursa" checked> 220V</label>
+                    <label><input type="checkbox" value="pompa" checked> Pompa</label>
+                    <label><input type="checkbox" value="time" checked> Data/Ora</label>
+                </div>
+            </fieldset>
+
+            <fieldset class="columns-group" id="conditionsBlock">
+                <legend class="legend-with-master">
+                    <span>Condiții</span>
+                    <label class="cond-master-label" title="Activează/Dezactivează toate condițiile">
+                        <input type="checkbox" id="cond_all_enabled">
+                    </label>
+                </legend>
+
+
+                <fieldset class="columns-group" id="cond-t1min">
+                    <legend>T1min</legend>
+                    <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <input type="checkbox" id="cond_t1min_enabled" name="cond_t1min_enabled" value="1" checked>
+                    </label>
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <span style="min-width:74px;">T1 min ≤</span>
+                        <input type="number" step="any" name="cond_t1min_t1" id="cond_t1min_t1" value="50"
+                               style="width:100%;">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="min-width:74px;">G1 &gt;</span>
+                        <input type="number" step="any" name="cond_t1min_g1" id="cond_t1min_g1" value="0.5"
+                               style="width:100%;">
+                    </div>
+                </fieldset>
+
+                <fieldset class="columns-group" id="cond-t4min">
+                    <legend class="legend-with-alarm">
+                        <span>T4min</span>
+
+                        <!-- Alarma в правом верхнем углу, ПО УМОЛЧАНИЮ БЕЗ галочки -->
+                        <label class="t4-alarm-label">
+                            <span>Alarma</span>
+                            <input type="checkbox" id="cond_t4min_alarm">
+                        </label>
+                    </legend>
+
+                    <!-- СТАРАЯ штатная галка включения условия T4min, без текста -->
+                    <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <input type="checkbox" id="cond_t4min_enabled"
+                               name="cond_t4min_enabled" value="1" checked>
+                    </label>
+
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <span style="min-width:74px;">T4 min ≤</span>
+                        <input type="number" step="any" name="cond_t4min_t4"
+                               id="cond_t4min_t4" value="30" style="width:100%;">
+                    </div>
+                </fieldset>
+
+
+                <fieldset class="columns-group" id="cond-dtmin">
+                    <legend class="legend-with-alarm">
+                        <span>ΔT min</span>
+                        <label class="t4-alarm-label">
+                            <span>Alarma</span>
+                            <input type="checkbox" id="cond_dtmin_alarm">
+                        </label>
+                    </legend>
+                    <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <input type="checkbox" id="cond_dtmin_enabled" name="cond_dtmin_enabled" value="1" checked>
+                    </label>
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <span style="min-width:74px;">ΔT min &lt;</span>
+                        <input type="number" step="any" name="cond_dtmin_dt" id="cond_dtmin_dt" value="5"
+                               style="width:100%;">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="min-width:74px;">T1 &gt;</span>
+                        <input type="number" step="any" name="cond_dtmin_t1_over" id="cond_dtmin_t1_over" value="50"
+                               style="width:100%;">
+                    </div>
+                </fieldset>
+
+
+                <fieldset class="columns-group" id="cond-tacm">
+                    <legend class="legend-with-alarm">
+                        <span>Tacm</span>
+                        <label class="t4-alarm-label">
+                            <span>Alarma</span>
+                            <input type="checkbox" id="cond_tacm_alarm">
+                        </label>
+                    </legend>
+                    <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <input type="checkbox" id="cond_tacm_enabled" name="cond_tacm_enabled" value="1" checked>
+                    </label>
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <span style="min-width:74px;">Tacm min ≤</span>
+                        <input type="number" step="any" name="cond_tacm_min" id="cond_tacm_min" value="50"
+                               style="width:100%;">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="min-width:74px;">Tacm max ≥</span>
+                        <input type="number" step="any" name="cond_tacm_max" id="cond_tacm_max" value="60"
+                               style="width:100%;">
+                    </div>
+                </fieldset>
+
+
+                <fieldset class="columns-group" id="cond-gacm-max">
+                    <legend class="legend-with-alarm">
+                        <span>Gacm max</span>
+                        <label class="t4-alarm-label">
+                            <span>Alarma</span>
+                            <input type="checkbox" id="cond_gacm_max_alarm">
+                        </label>
+                    </legend>
+                    <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <input type="checkbox" id="cond_gacm_max_enabled" name="cond_gacm_max_enabled" value="1"
+                               checked>
+                    </label>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="min-width:74px;">Gacm ≥</span>
+                        <input type="number" step="any" name="cond_gacm_max" id="cond_gacm_max" value="10"
+                               style="width:100%;">
+                    </div>
+                </fieldset>
+
+
+                <fieldset class="columns-group" id="cond-dgacm">
+                    <legend>ΔGacm max</legend>
+                    <label><input type="checkbox" id="cond_dgacm_enabled" name="cond_dgacm_enabled" value="1"
+                                  checked></label>
+
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <span style="min-width:90px;">Gacm ≥ 5 → ΔGacm ≥</span>
+                        <input type="number" step="0.1" name="dgacm_abs" id="dgacm_abs"
+                               value="1.0" style="width:100%;">
+                    </div>
+
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="min-width:90px;">Gacm &lt; 5 → ΔGgacm% ≥</span>
+                        <input type="number" step="1" name="dgacm_pct" id="dgacm_pct"
+                               value="20" style="width:100%;">
+                    </div>
+                </fieldset>
+
+
+                <fieldset class="columns-group" id="cond-g1min">
+                    <legend>G1 min</legend>
+                    <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <input type="checkbox" id="cond_g1_min_enabled" name="cond_g1_min_enabled" value="1" checked>
+                    </label>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="min-width:74px;">G1 ≤</span>
+                        <input type="number" step="any" name="cond_g1_min" id="cond_g1_min" value="0.5"
+                               style="width:100%;">
+                    </div>
+                </fieldset>
+
+                <fieldset class="columns-group" id="cond-dgp">
+                    <legend>ΔG% max</legend>
+                    <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <input type="checkbox" id="cond_dgp_enabled" name="cond_dgp_enabled" value="1" checked>
+                    </label>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="min-width:74px;">ΔG% &gt;</span>
+                        <input type="number" step="any" name="cond_dgp_limit" id="cond_dgp_limit" value="2.5"
+                               style="width:100%;">
+                    </div>
+                </fieldset>
+
+                <fieldset class="columns-group" id="cond-dgflow">
+                    <legend>ΔG max</legend>
+                    <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <input type="checkbox" id="cond_dg_flow_enabled" name="cond_dg_flow_enabled" value="1" checked>
+                    </label>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="min-width:74px;">ΔG &gt;</span>
+                        <input type="number" step="any" name="cond_dg_flow_limit" id="cond_dg_flow_limit" value="1.0"
+                               style="width:100%;">
+                    </div>
+                </fieldset>
+
+                <fieldset class="columns-group" id="cond-gadaos">
+                    <legend>Gadaos max</legend>
+                    <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <input type="checkbox" id="cond_gadaos_enabled" name="cond_gadaos_enabled" value="1" checked>
+                    </label>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="min-width:74px;">Gadaos &gt;</span>
+                        <input type="number" step="any" name="cond_gadaos_limit" id="cond_gadaos_limit" value="0.1"
+                               style="width:100%;">
+                    </div>
+                </fieldset>
+
+                <!-- Pompa  -->
+                <fieldset class="columns-group" id="cond-pompa-off">
+                    <legend>Pompa oprită</legend>
+                    <label style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                        <input type="checkbox"
+                               id="cond_pompa_off_enabled"
+                               name="cond_pompa_off_enabled"
+                               value="1"
+                               checked>
+                    </label>
+                </fieldset>
+
+                <!-- 220V -->
+                <fieldset class="columns-group" id="cond-sursa-off">
+                    <legend>Lipsă 220V</legend>
+                    <label style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                        <input type="checkbox"
+                               id="cond_sursa_off_enabled"
+                               name="cond_sursa_off_enabled"
+                               value="1"
+                               checked>
+                    </label>
+                </fieldset>
+
+                <fieldset class="columns-group" id="cond-dataora">
+                    <legend>Ore fără date</legend>
+                    <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <input type="checkbox" id="cond_dataora_enabled" name="cond_dataora_enabled" value="1" checked>
+                    </label>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="min-width:74px;">Limita (ore)</span>
+                        <input type="number" step="1" name="cond_dataora_limit" id="cond_dataora_limit" value="1"
+                               style="width:100%;">
+                    </div>
+                </fieldset>
+            </fieldset>
+        </div>
+
+    </aside>
+
+    <div class="resizer" id="resizer" role="separator" aria-orientation="vertical"
+         aria-label="Изменение ширины боковой панели" tabindex="0"></div>
+
+    <main class="main" id="main">
+
+        <div class="topbar"></div>
+
+        <div class="content-inner">
+            <div class="table-wrapper">
+                <div class="error-box" id="errorBox"></div>
+                <table class="data-table" id="ptcTable">
+                    <thead>
+                    <tr id="theadRow1"></tr>
+                    <tr id="theadRow2"></tr>
+                    </thead>
+                    <tbody id="tbody"></tbody>
+                </table>
+            </div>
+
+            <!-- Тут вместо TOTAL теперь футер -->
+            <div id="ptc-total" class="mt-1 pt-1 small border-top app-footer">
+                &copy; 2025 STIC SCADA Inginer Victor Musteață tel:93-312.
+            </div>
+        </div>
+
+
+    </main>
+</div>
+
+
+<!-- Звук для помп -->
+<audio id="alarm-audio" src="/static/sonor.mp3" preload="auto" style="display:none"></audio>
+
+<!-- НОВЫЙ: звук для Alarma T4 -->
+<audio id="alarm-t4-audio" src="/static/sonor.wav" preload="auto" style="display:none"></audio>
+
+
+<script>
+    (function () {
+      "use strict";
+
+      const PUMP_ON_THRESHOLD = 12.5;
+
+      // звук для помп (как было)
+      const alarmAudio = document.getElementById('alarm-audio');
+      if (alarmAudio) alarmAudio.loop = true;
+
+      // НОВОЕ: звук для Alarma T4
+      const alarmT4Audio = document.getElementById('alarm-t4-audio');
+      if (alarmT4Audio) alarmT4Audio.loop = true;
+
+      const activePumpAlarms = new Set();
+
+      function alarmStartFor(key) {
+          if (!alarmAudio) return;
+          activePumpAlarms.add(key);
+          if (alarmAudio.paused) {
+              alarmAudio.play().catch(() => {});
+          }
+      }
+
+      function alarmStopFor(key) {
+          if (!alarmAudio) return;
+          activePumpAlarms.delete(key);
+          if (activePumpAlarms.size === 0) {
+              alarmAudio.pause();
+              alarmAudio.currentTime = 0;
+          }
+      }
+
+      // ===== НОВОЕ: отдельный звук для T4 =====
+      let t4AlarmActive = false;
+
+      function t4AlarmStart() {
+          if (!alarmT4Audio) return;
+          t4AlarmActive = true;
+          if (alarmT4Audio.paused) {
+              alarmT4Audio.play().catch(() => {});
+          }
+      }
+
+      function t4AlarmStop() {
+          if (!alarmT4Audio) return;
+          t4AlarmActive = false;
+          alarmT4Audio.pause();
+          alarmT4Audio.currentTime = 0;
+      }
+
+      // включена ли галка "Alarma" в блоке T4min
+      function isT4AlarmEnabled() {
+          const cb = document.getElementById('cond_t4min_alarm');
+          return !!(cb && cb.checked);
+      }
+            function isDtAlarmEnabled() {
+          const cb = document.getElementById('cond_dtmin_alarm');
+          return !!(cb && cb.checked);
+      }
+
+      function isTacmAlarmEnabled() {
+          const cb = document.getElementById('cond_tacm_alarm');
+          return !!(cb && cb.checked);
+      }
+
+      function isGacmMaxAlarmEnabled() {
+          const cb = document.getElementById('cond_gacm_max_alarm');
+          return !!(cb && cb.checked);
+      }
+
+
+      function pumpKeyForEl(el) {
+          return `${el?.dataset?.ptc || 'unknown'}:${el?.dataset?.pidx || '0'}`;
+      }
+
+
+          function resyncPumpAlarmsFromDOM() {
+              document.querySelectorAll('.pump-shape[data-armed="1"]').forEach(el => {
+                  const key = pumpKeyForEl(el);
+                  const isAlarm = el.dataset.alarm === '1';   // <— используем alarm, как мы договорились
+                  if (isAlarm) {
+                      alarmStartFor(key);
+                  } else {
+                      alarmStopFor(key);
+                  }
+              });
+          }
+
+
+          // Колонка Pompa видна сейчас?
+          function isPompaVisible() { // NEW
+              return Array.isArray(CURRENT_COLS) && CURRENT_COLS.some(c => c.key === 'pompa');
+          }
+
+          // Глушим все звуки помп немедленно (не трогаем armedPumpKeys) // NEW
+          function stopAllPumpAlarms() {
+              if (alarmAudio) {
+                  try {
+                      alarmAudio.pause();
+                      alarmAudio.currentTime = 0;
+                  } catch (_) {
+                  }
+              }
+              activePumpAlarms.clear();
+          }
+
+
+          // === Persist armed state (per pump) ===   <-- ВСТАВЬ ЭТОТ БЛОК ЗДЕСЬ
+          const LS_ARMED = 'ui.pumps.armed';
+
+          function loadArmedFromLS() {
+              try {
+                  const arr = JSON.parse(localStorage.getItem(LS_ARMED) || '[]');
+                  return new Set(Array.isArray(arr) ? arr : []);
+              } catch {
+                  return new Set();
+              }
+          }
+
+          function saveArmedToLS() {
+              try {
+                  localStorage.setItem(LS_ARMED, JSON.stringify([...armedPumpKeys]));
+              } catch {
+              }
+          }
+
+          // глобальный набор вооружённых помп
+          const armedPumpKeys = loadArmedFromLS();
+
+
+          /* ===== Sidebar resize / toggle ===== */
+          const root = document.documentElement, layout = document.getElementById('layout'),
+              resizer = document.getElementById('resizer'), toggleBtn = document.getElementById('toggleSidebar');
+          const LS_W = 'ui.sidebar.width', LS_C = 'ui.sidebar.collapsed';
+          const MIN = parseInt(getComputedStyle(root).getPropertyValue('--sidebar-min')) || 180;
+          const MAX = parseInt(getComputedStyle(root).getPropertyValue('--sidebar-max')) || 600;
+          const DEF = parseInt(getComputedStyle(root).getPropertyValue('--sidebar-width')) || 280;
+
+          function setWidth(px) {
+              const c = Math.min(MAX, Math.max(MIN, px));
+              root.style.setProperty('--sidebar-width', c + 'px');
+              try {
+                  localStorage.setItem(LS_W, String(c))
+              } catch (e) {
+              }
+          }
+
+          function applySaved() {
+              let w;
+              try {
+                  w = parseInt(localStorage.getItem(LS_W) || '', 10)
+              } catch (e) {
+              }
+              if (!isNaN(w)) root.style.setProperty('--sidebar-width', w + 'px');
+              let col = false;
+              try {
+                  col = localStorage.getItem(LS_C) === '1'
+              } catch (e) {
+              }
+              layout.classList.toggle('collapsed', col);
+              toggleBtn.textContent = col ? '>>' : '<<';
+              toggleBtn.setAttribute('aria-pressed', col ? 'true' : 'false');
+          }
+
+          function setCollapsed(col) {
+              layout.classList.toggle('collapsed', col);
+              try {
+                  localStorage.setItem(LS_C, col ? '1' : '0')
+              } catch (e) {
+              }
+              toggleBtn.textContent = col ? '>>' : '<<';
+              toggleBtn.setAttribute('aria-pressed', col ? 'true' : 'false');
+          }
+
+
+          window.setCollapsed = setCollapsed;
+
+          applySaved();
+
+          // Кнопка в шапке больше НИЧЕГО не делает
+          if (toggleBtn) {
+              toggleBtn.disabled = true;
+              toggleBtn.style.display = 'none';   // можно просто скрыть
+          }
+
+
+          let dragging = false, startX = 0, startW = 0;
+          let didDrag = false;   // ← новый флаг: было ли перетаскивание
+
+          function startDrag(x) {
+              dragging = true;
+              didDrag = false;   // ← при начале перетаскивания сбрасываем
+              startX = x;
+              startW = parseInt(getComputedStyle(root).getPropertyValue('--sidebar-width')) || DEF;
+              document.body.classList.add('resizing');
+              if (layout.classList.contains('collapsed')) setCollapsed(false);
+          }
+
+          function moveDrag(x) {
+              if (!dragging) return;
+
+              const dx = x - startX;
+              // если мышь реально сдвинулась больше чем на 2px — считаем, что это drag
+              if (Math.abs(dx) > 2) {
+                  didDrag = true;
+              }
+
+              setWidth(startW + dx);
+          }
+
+          function endDrag() {
+              if (!dragging) return;
+              dragging = false;
+              document.body.classList.remove('resizing');
+          }
+
+          resizer.addEventListener('mousedown', e => {
+              e.preventDefault();
+              startDrag(e.clientX);
+          });
+
+          window.addEventListener('mousemove', e => moveDrag(e.clientX));
+          window.addEventListener('mouseup', endDrag);
+
+          // === touch-события ===
+          resizer.addEventListener('touchstart', e => {
+              if (!e.touches || !e.touches[0]) return;
+              startDrag(e.touches[0].clientX);
+              e.preventDefault();
+          }, {passive: false});
+
+          window.addEventListener('touchmove', e => {
+              if (!e.touches || !e.touches[0]) return;
+              moveDrag(e.touches[0].clientX);
+          }, {passive: false});
+
+          window.addEventListener('touchend', endDrag);
+
+          // клик по ресайзеру — сворачивает/разворачивает ТОЛЬКО если НЕ было drag
+          resizer.addEventListener('click', (e) => {
+              if (didDrag) {
+                  // это был drag → игнорируем click
+                  e.preventDefault();
+                  e.stopPropagation();
+                  didDrag = false;   // сбросим флаг на будущее
+                  return;
+              }
+              const collapsedNow = layout.classList.contains('collapsed');
+              setCollapsed(!collapsedNow);        // если было открыто – закрываем, и наоборот
+          });
+
+
+
+          /* ===== Columns config ===== */
+          const ALL_COLS = [
+              {key: 'ptc', title: 'PTC', fixed: true},
+              {key: 'address', title: 'Adresa'},
+              {key: 'q1', title: 'Q'},
+              {key: 'g1', title: 'G1'},
+              {key: 'g2', title: 'G2'},
+              {key: 'dg', title: 'ΔG'},
+              {key: 'dg_pct', title: 'Δ%'},
+              {key: 't1', title: 'T1'},
+              {key: 't2', title: 'T2'},
+              {key: 'dt', title: 'ΔT'},
+              {key: 't31', title: 'T31'},
+              {key: 't32', title: 'T32'},
+              {key: 't41', title: 'T41'},
+              {key: 't42', title: 'T42'},
+              {key: 't43', title: 'T43'},
+              {key: 't44', title: 'T44'},
+              {key: 'tacm', title: 'Tacm'},
+              {key: 'gacm', title: 'Gacm'},
+              {key: 'gacm_p', title: 'Gacm-P'},
+              {key: 'dgacm_val', title: 'ΔGacm'},
+              {key: 'g_adaos', title: 'Gadaos'},
+              {key: 'sursa', title: '220V'},
+              {key: 'pompa', title: 'Pompa'},
+              {key: 'time', title: 'Data/Ora'}
+          ];
+          const ORDER_KEYS = ALL_COLS.map(c => c.key);
+
+          const LS_COLS = 'ui.columns.checked';
+          const LS_SEASON = 'ui.season';
+
+          // сортировка (persist)
+          const LS_SORT = 'ui.sort';
+          let SORT_STATE = {key: null, dir: null};
+
+          function saveSortState() {
+              try {
+                  localStorage.setItem(LS_SORT, JSON.stringify(SORT_STATE));
+              } catch (e) {
+              }
+          }
+
+          function restoreSortState() {
+              try {
+                  const raw = localStorage.getItem(LS_SORT);
+                  if (!raw) return;
+                  const s = JSON.parse(raw);
+                  if (s && s.key && (s.dir === 'asc' || s.dir === 'desc')) SORT_STATE = s;
+              } catch (e) {
+              }
+          }
+
+          function getCheckedCols() {
+              const boxes = [...document.querySelectorAll('#columnsList input[type="checkbox"]')];
+              const picked = boxes.filter(b => b.checked).map(b => b.value);
+              return ALL_COLS.filter(c => c.fixed || picked.includes(c.key));
+          }
+
+          function getDisplayCols() {
+              const cols = getCheckedCols();
+              return cols.slice().sort((a, b) => ORDER_KEYS.indexOf(a.key) - ORDER_KEYS.indexOf(b.key));
+          }
+
+          // Presets
+          const PRESETS = {
+              Iarna: ['address', 'q1', 'g1', 'g2', 'dg', 'dg_pct', 't1', 't2', 'dt', 't31', 't32', 't41', 't42', 't43', 't44', 'tacm', 'gacm', 'gacm_p', 'dgacm_val', 'g_adaos', 'sursa', 'pompa', 'time'],
+              Vara: ['address', 'q1', 'g1', 'g2', 'dg', 'dg_pct', 't1', 't2', 'dt', 't31', 't32', 't41', 't42', 't43', 't44', 'tacm', 'gacm', 'gacm_p', 'dgacm_val', 'g_adaos', 'sursa', 'time'],
+              Toate: ALL_COLS.filter(c => !c.fixed).map(c => c.key)
+          };
+
+          function setColumnsBySeason(season) {
+              const values = PRESETS[season] || [];
+              const boxes = document.querySelectorAll('#columnsList input[type="checkbox"]');
+              boxes.forEach(cb => {
+                  cb.checked = values.includes(cb.value);
+              });
+              saveCheckedToLS();
+          }
+
+          function saveCheckedToLS() {
+              try {
+                  const vals = [...document.querySelectorAll('#columnsList input[type="checkbox"]')]
+                      .filter(cb => cb.checked).map(cb => cb.value);
+                  localStorage.setItem(LS_COLS, JSON.stringify(vals));
+              } catch (e) {
+              }
+          }
+
+          function restoreCheckedFromLS() {
+              try {
+                  const raw = localStorage.getItem(LS_COLS);
+                  if (!raw) return false;
+                  const vals = JSON.parse(raw);
+                  if (!Array.isArray(vals) || !vals.length) return false;
+                  const boxes = document.querySelectorAll('#columnsList input[type="checkbox"]');
+                  boxes.forEach(cb => {
+                      cb.checked = vals.includes(cb.value);
+                  });
+                  return true;
+              } catch (e) {
+                  return false;
+              }
+          }
+
+          function getCurrentSeason() {
+              const el = document.querySelector('input[name="season"]:checked');
+              return el ? el.value : 'Iarna';
+          }
+
+          function setCurrentSeason(season) {
+              const el = document.querySelector('input[name="season"][value="' + season + '"]');
+              if (el) el.checked = true;
+              try {
+                  localStorage.setItem(LS_SEASON, season);
+              } catch (e) {
+              }
+          }
+
+          function restoreSeason() {
+              let s = 'Iarna';
+              try {
+                  s = localStorage.getItem(LS_SEASON) || 'Iarna';
+              } catch (e) {
+              }
+              setCurrentSeason(s);
+              return s;
+          }
+
+          let CURRENT_COLS = [];
+
+          function buildHeader() {
+              const cols = getDisplayCols();
+              CURRENT_COLS = cols.slice();
+
+              const row1 = document.getElementById('theadRow1');
+              const row2 = document.getElementById('theadRow2');
+              row1.innerHTML = '';
+              row2.innerHTML = '';
+
+              const idxDT = ORDER_KEYS.indexOf('dt');
+              const before = cols.filter(c => ORDER_KEYS.indexOf(c.key) <= idxDT);
+              const after = cols.filter(c => ORDER_KEYS.indexOf(c.key) > idxDT);
+
+              before.forEach(c => {
+                  const th = document.createElement('th');
+                  th.dataset.col = c.key;
+                  th.textContent = c.title;
+                  th.classList.add('sortable');
+                  th.appendChild(Object.assign(document.createElement('span'), {
+                      className: 'sort-indicator',
+                      'aria-hidden': 'true'
+                  }));
+                  row1.appendChild(th);
+              });
+              after.forEach(c => {
+                  const th = document.createElement('th');
+                  th.dataset.col = c.key;
+                  th.textContent = c.title;
+                  th.classList.add('sortable');
+                  th.appendChild(Object.assign(document.createElement('span'), {
+                      className: 'sort-indicator',
+                      'aria-hidden': 'true'
+                  }));
+                  row1.appendChild(th);
+              });
+
+              row2.style.display = 'none';
+              initSorting();
+          }
+
+          /* ===== Helpers ===== */
+          function parseAsDate(v) {
+              const raw = String(v ?? '').trim();
+              if (!raw) return null;
+              const isoTry = new Date(raw.includes(' ') ? raw.replace(' ', 'T') : raw);
+              if (!isNaN(isoTry.getTime())) return isoTry.getTime();
+              const m = /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(raw);
+              if (!m) return null;
+              const sec = m[6] ? +m[6] : 0;
+              const t = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], sec, 0).getTime();
+              return isNaN(t) ? null : t;
+          }
+
+          function parseAsNumber(v) {
+              let s = String(v ?? '')
+                  .trim()
+                  .replace(/[\s\u00A0\u2000-\u200D\u202F\u205F\u3000]/g, '')
+                  .replace(/[°˚℃%]/g, '')
+                  .replace(/[−–—]/g, '-');
+
+              if (!s) return null;
+
+              let parenNegative = false;
+              if (s.startsWith('(') && s.endsWith(')')) {
+                  parenNegative = true;
+                  s = s.slice(1, -1);
+              }
+
+              s = s.replace(/[^0-9.,+\-]/g, '');
+
+              const lastComma = s.lastIndexOf(',');
+              const lastDot = s.lastIndexOf('.');
+              if (lastComma !== -1 && lastDot !== -1) {
+                  const i = Math.max(lastComma, lastDot);
+                  s = s.slice(0, i) + '⟂' + s.slice(i + 1);
+                  s = s.replace(/[.,]/g, '');
+                  s = s.replace('⟂', '.');
+              } else {
+                  s = s.replace(',', '.');
+              }
+
+              s = s.replace(/(?!^)[+\-]/g, '');
+
+              if (parenNegative && s[0] !== '-') s = '-' + s;
+
+              const n = parseFloat(s);
+              return Number.isFinite(n) ? n : null;
+          }
+
+          function isBadId(v) {
+              return v === 0 || v === '0' || v === null || v === undefined || v === '';
+          }
+
+          /* ===== Sorting (improved & persistent) ===== */
+  function keyOf(td) {
+      const col  = td?.dataset?.col || '';
+      const ds   = td?.dataset || {};
+      const text = td ? (td.textContent || '').trim() : '';
+
+      // 1) приоритет: заранее положенные ключи
+      if (ds.sortNum !== undefined) {
+          const n   = parseFloat(ds.sortNum);
+          const val = Number.isFinite(n) ? n : NaN;
+          return { type: 'number', value: val, empty: !Number.isFinite(val) };
+      }
+      if (ds.sortTs !== undefined) {
+          const t   = parseInt(ds.sortTs, 10);
+          const val = Number.isFinite(t) ? t : NaN;
+          return { type: 'date', value: val, empty: !Number.isFinite(val) };
+      }
+
+      // 2) спец-логика для PTC
+      if (col === 'ptc') {
+          const m = /^(\d+)([A-Za-z]*)$/.exec(text);
+          if (m) {
+              const num = parseInt(m[1], 10);
+              const suf = (m[2] || '').toLowerCase();
+              return { type: 'ptc', value: [num, suf ? 1 : 0, suf], empty: false };
+          }
+          const s = text.toLowerCase();
+          return { type: 'string', value: s, empty: s.length === 0 };
+      }
+
+      // 2b) спец-логика для Adresa:
+      // сортируем строго как строку, не пытаемся распарсить число/дату
+      // ВАЖНО: 'address' тут должен совпадать с data-col заголовка адреса.
+      if (col === 'address') {
+          const s = text.toLowerCase();
+          return { type: 'string', value: s, empty: s.length === 0 };
+      }
+
+      // 3) бэкап-парсинг
+      const d = parseAsDate(text);
+      if (d !== null) return { type: 'date', value: d, empty: false };
+      const n = parseAsNumber(text);
+      if (n !== null) return { type: 'number', value: n, empty: false };
+      const str = text.toLowerCase();
+      return { type: 'string', value: str, empty: str.length === 0 };
+  }
+
+  // коллатор оставляем как есть
+  const STR_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+
+          function cmpKeys(a, b) {
+              if (a.empty && !b.empty) return 1;
+              if (!a.empty && b.empty) return -1;
+
+              const order = {ptc: 0, number: 1, date: 2, string: 3};
+              if (a.type !== b.type) return (order[a.type] ?? 9) - (order[b.type] ?? 9);
+
+              if (a.type === 'ptc') {
+                  const [an, ah, as] = a.value;
+                  const [bn, bh, bs] = b.value;
+                  if (an !== bn) return an - bn;
+                  if (ah !== bh) return ah - bh;
+                  return as.localeCompare(bs);
+              }
+              if (a.type === 'string') return STR_COLLATOR.compare(a.value, b.value);
+
+              // number/date
+              if (a.value < b.value) return -1;
+              if (a.value > b.value) return 1;
+
+              // особый случай: -0 перед +0
+              if (a.type === 'number') {
+                  if (Object.is(a.value, -0) && !Object.is(b.value, -0)) return -1;
+                  if (!Object.is(a.value, -0) && Object.is(b.value, -0)) return 1;
+              }
+              return 0;
+          }
+
+          function initSorting() {
+              const table = document.getElementById('ptcTable');
+              const thead = table.tHead;
+              const tbody = table.tBodies[0];
+              if (!thead || !tbody) return;
+
+              const thMap = new Map();
+              thead.querySelectorAll('th[data-col]').forEach(th => {
+                  thMap.set(th.dataset.col, th);
+              });
+
+              const headers = CURRENT_COLS.map(c => thMap.get(c.key)).filter(Boolean);
+
+              const headerByCol = new Map();
+              headers.forEach((th) => {
+                  if (th?.dataset?.col) headerByCol.set(th.dataset.col, {th});
+              });
+
+              headers.forEach((th) => {
+                  th.classList.add('sortable');
+                  th.setAttribute('tabindex', '0');
+                  th.setAttribute('role', 'button');
+                  th.setAttribute('aria-sort', 'none');
+
+                  let indicator = th.querySelector('.sort-indicator');
+                  if (!indicator) {
+                      indicator = document.createElement('span');
+                      indicator.className = 'sort-indicator';
+                      indicator.setAttribute('aria-hidden', 'true');
+                      th.appendChild(indicator);
+                  }
+
+                  function setClasses(active, dir) {
+                      headers.forEach(h => {
+                          h.classList.remove('sorted-asc', 'sorted-desc');
+                          h.setAttribute('aria-sort', 'none');
+                          delete h.dataset.sortDir;
+                      });
+                      if (dir === 'asc') {
+                          active.classList.add('sorted-asc');
+                          active.setAttribute('aria-sort', 'ascending');
+                          active.dataset.sortDir = 'asc';
+                      } else if (dir === 'desc') {
+                          active.classList.add('sorted-desc');
+                          active.setAttribute('aria-sort', 'descending');
+                          active.dataset.sortDir = 'desc';
+                      }
+                  }
+
+                  function sort(dir) {
+                      const colKey = th.dataset.col;
+                      const rows = [...tbody.querySelectorAll('tr')].map((tr, i) => {
+                          const cell = tr.querySelector(`td[data-col="${colKey}"]`);
+                          return {tr, i, key: keyOf(cell)};
+                      });
+
+                      rows.sort((a, b) => {
+                          const r = cmpKeys(a.key, b.key);
+                          if (r !== 0) return r;
+                          return a.i - b.i; // стабильность
+                      });
+                      if (dir === 'desc') rows.reverse();
+                      const frag = document.createDocumentFragment();
+                      rows.forEach(r => frag.appendChild(r.tr));
+                      tbody.appendChild(frag);
+                  }
+
+                  function activate() {
+                      const cur = th.dataset.sortDir === 'asc' ? 'asc'
+                          : th.dataset.sortDir === 'desc' ? 'desc' : null;
+                      const next = cur === 'asc' ? 'desc' : 'asc';
+
+                      SORT_STATE = {key: th.dataset.col, dir: next};
+                      saveSortState();
+
+                      setClasses(th, next);
+                      sort(next);
+                  }
+
+                  th.onclick = activate;
+                  th.onkeydown = (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          activate();
+                      }
+                  };
+              });
+
+              // авто-применение сохранённой сортировки
+              restoreSortState();
+              const saved = (SORT_STATE && SORT_STATE.key) ? {key: SORT_STATE.key, dir: SORT_STATE.dir} : null;
+              if (saved && headerByCol.has(saved.key)) {
+                  const entry = headerByCol.get(saved.key);
+                  if (entry && entry.th) {
+                      const headerEl = entry.th;
+                      headerEl.click();            // ASC
+                      if (saved.dir === 'desc') headerEl.click(); // DESC
+                  }
+              }
+          }
+
+          // Пере-применить сохранённую сортировку к текущим строкам
+          function applyStoredSort() {
+              const {key, dir} = SORT_STATE || {};
+              if (!key || (dir !== 'asc' && dir !== 'desc')) return;
+
+              const table = document.getElementById('ptcTable');
+              const thead = table.tHead;
+              const tbody = table.tBodies[0];
+              if (!thead || !tbody) return;
+
+              const rows = [...tbody.querySelectorAll('tr')].map((tr, i) => {
+                  const cell = tr.querySelector(`td[data-col="${key}"]`);
+                  return {tr, i, key: keyOf(cell)};
+              });
+              rows.sort((a, b) => {
+                  const r = cmpKeys(a.key, b.key);
+                  if (r !== 0) return r;
+                  return a.i - b.i;
+              });
+              if (dir === 'desc') rows.reverse();
+
+              const frag = document.createDocumentFragment();
+              rows.forEach(r => frag.appendChild(r.tr));
+              tbody.appendChild(frag);
+
+              thead.querySelectorAll('th[data-col]').forEach(h => {
+                  h.classList.remove('sorted-asc', 'sorted-desc');
+                  h.setAttribute('aria-sort', 'none');
+                  delete h.dataset.sortDir;
+              });
+              const target = thead.querySelector(`th[data-col="${key}"]`);
+              if (target) {
+                  target.dataset.sortDir = dir;
+                  if (dir === 'asc') {
+                      target.classList.add('sorted-asc');
+                      target.setAttribute('aria-sort', 'ascending');
+                  } else {
+                      target.classList.add('sorted-desc');
+                      target.setAttribute('aria-sort', 'descending');
+                  }
+              }
+          }
+
+          /* ===== Rendering ===== */
+          const tbodyEl = document.getElementById('tbody');
+
+
+          function linkOrText(url, txt) {
+              return (!isBadId(url)) ? `<a href="${url}" target="_blank">${txt}</a>` : String(txt)
+          }
+
+          function boolDot(on) {
+              return `<span class="dot-220 ${on ? 'on' : 'off'}" aria-label="220V ${on ? 'ON' : 'OFF'}">●</span>`;
+          }
+
+          function renderRows(data) {
+              const cols = getDisplayCols();
+
+              const t4AlarmOn      = isT4AlarmEnabled();
+              const dtAlarmOn      = isDtAlarmEnabled();
+              const tacmAlarmOn    = isTacmAlarmEnabled();
+              const gacmMaxAlarmOn = isGacmMaxAlarmEnabled();
+
+              let hasAnyLimitAlarm = false;   // любой из лимитов сработал?
+
+
+              // очищаем тело таблицы
+              tbodyEl.innerHTML = '';
+
+              // 🔹 Если данных нет — показываем одну строку "Nu sunt date"
+              if (!data || data.length === 0) {
+                  const colSpan = cols.length || 1;
+                  const tr = document.createElement('tr');
+                  const td = document.createElement('td');
+                  td.colSpan = colSpan;
+                  td.textContent = 'Nu sunt date:';
+                  td.className = 'no-data-cell';   // 🔹 наш кастомный класс
+                  tr.appendChild(td);
+                  tbodyEl.appendChild(tr);
+                  return;
+              }
+
+
+            // 🔹 Обычный рендер строк
+      data.forEach(row => {
+          const tds = [];
+
+          cols.forEach(c => {
+              // --- ЛОГИКА ДЛЯ PTC (оставляем без изменений) ---
+              if (c.key === 'ptc') {
+                  const ptc = row.ptc;
+                  const viewUrl = `http://10.1.1.174/view/view_page.php?title=${ptc}`;
+                  const excludeUrl = `/exclude/${ptc}/`;
+                  const commentUrl = `/comment/${ptc}/`;
+                  const hasC = !!row.has_comment;
+                  const commentCls = 'ptc-btn comment-btn' + (hasC ? ' has-comments' : '');
+                  // Определяем, есть ли исключения для этого объекта
+const hasExcl = !!row.has_exclusion;
+// Если есть, добавляем красную окраску и увеличиваем насыщенность шрифта
+// Цвет оставляем прежним (#d21919), но делаем символ чуть жирнее для лучшего визуального
+// восприятия. Используем font-weight: bold, чтобы символ «−» выглядел толще.
+const excludeStyle = hasExcl
+  ? ' style="color:#d21919 !important; font-weight:900; font-size:18px; text-shadow:0 0 0 #d21919;"'
+  : '';
+
+
+
+const inner = (window.CAN_EDIT === true)
+    ? `<div class="ptc-cell">
+           <a href="${excludeUrl}" target="_blank" class="ptc-btn exclude-btn" title="Исключения"${excludeStyle}>−</a>
+           <a href="${viewUrl}" target="_blank" class="ptc-link">${ptc}</a>
+           <a href="${commentUrl}" target="_blank" class="${commentCls}" title="Комментарии">N</a>
+       </div>`
+    : `<div class="ptc-cell">
+           <a href="${viewUrl}" target="_blank" class="ptc-link">${ptc}</a>
+       </div>`;
+
+
+                  tds.push(`<td data-col="ptc">${inner}</td>`);
+                  return; // важно: дальше эту колонку уже не обрабатываем
+              }
+
+              if (c.key === 'address') {
+                  const url = 'http://10.1.1.248:2222/?obiect=' + encodeURIComponent(row.ptc);
+                  tds.push(`<td data-col="address">${linkOrText(url, row.address || '')}</td>`);
+                  return;
+              }
+
+              const colIdKey = 'id_' + c.key;
+
+              // скрыть ячейку, если id = 0/"0"/пусто
+              if (Object.prototype.hasOwnProperty.call(row, colIdKey) && isBadId(row[colIdKey])) {
+                  tds.push(`<td data-col="${c.key}"></td>`);
+                  return;
+              }
+
+              if (c.key === 'sursa') {
+                  tds.push(`<td data-col="sursa">${linkOrText(row.id_sursa, boolDot(!!row.sursa))}</td>`);
+                  return;
+              }
+
+              if (c.key === 'pompa') {
+                  let html = '';
+                  if (row.pompa && Array.isArray(row.pompa)) {
+                      html = row.pompa.map((val, idx) => {
+                          const num = row.pompa_nums && row.pompa_nums[idx];
+                          let url = '';
+                          if (num === 1) url = row.id_pompa1;
+                          else if (num === 2) url = row.id_pompa2;
+                          else if (num === 3) url = row.id_pompa3;
+
+                          // TERMOCOM5: alarm как было (val > 200)
+                          // LOVATI: alarm когда val === 1 (OFF красный)
+                        const isAlarm = (row.src === 'lovati')
+                            ? (Number(val) === 1)
+                            : (Number(val) > 200);
+
+                          // твоя раскраска
+                          let color = 'gray';
+
+                        // ✅ LOVATI: 0=зелёный, 1=красный (никаких жёлтых/серых)
+              if (row.src === 'lovati') {
+                const v = Number(val);
+    if (v === 0) color = 'green';
+    else if (v === 1) color = 'red';
+    else return ''; // не рисуем мусор
+} else {
+    // ⬇️ TERMOCOM5 (как было)
+    const lcs = row.lcs || 0;
+    const LCS_NORM = 30;
+    if (lcs < LCS_NORM) color = 'yellow';
+    else {
+        if (val > 200) color = 'red';
+        else if (val > 0) color = 'green';
+    }
+}
+
+
+                          // ключ и текущее armed-состояние из набора
+                          const key = `${row.ptc}:${idx + 1}`;
+                          const armed = armedPumpKeys.has(key); // <-- важная строка
+
+                          // если armed → кружок, иначе квадрат
+                          const char = armed ? '&#9679;' : '&#9632;';
+                          const radius = armed ? '50%' : '6px';
+
+                          const span = `
+          <span class="pump-shape"
+                style="color:${color};border-radius:${radius}"
+                data-col="pompa"
+                data-ptc="${row.ptc}"
+                data-pidx="${idx + 1}"
+                data-alarm="${isAlarm ? '1' : '0'}"
+                data-armed="${armed ? '1' : '0'}">${char}</span>`;
+
+                          return (!isBadId(url)) ? `<a href="${url}" target="_blank">${span}</a>` : span;
+                      }).join('');
+                  }
+                  tds.push(`<td data-col="pompa">${html}</td>`);
+                  return;
+              }
+
+              // --- T1 --- (только по флагу бэкенда)
+              if (c.key === 't1') {
+                  const url = row.id_t1;
+                  const txt = (row.t1 ?? '');
+                  const red = (row.t1_trigger === true);
+                  const inner = (!isBadId(url))
+                      ? `<a href="${url}" target="_blank" ${red ? 'class="em-red"' : ''}>${txt}</a>`
+                      : `<span ${red ? 'class="em-red"' : ''}>${txt}</span>`;
+                  const sortNum = parseAsNumber(row.t1 ?? txt);
+                  tds.push(`<td data-col="t1" ${Number.isFinite(sortNum) ? `data-sort-num="${sortNum}"` : ''}>${inner}</td>`);
+                  return;
+              }
+
+             // --- T2 --- (ΔT min → красим T2 + оранжевая рамка + звук при включённой Alarma)
+if (c.key === 't2') {
+    const url = row.id_t2;
+    const txt = (row.t2 ?? '');
+    const red = row.t2_red === true;
+
+    // Alarma из блока "ΔT min"
+    const isAlarmOn = dtAlarmOn && red;   // dtAlarmOn = isDtAlarmEnabled()
+
+    // если условие ΔT выполнилось и галка Alarma стоит → участвует в звуке
+    if (isAlarmOn) {
+        hasAnyLimitAlarm = true;
+    }
+
+    const inner = (!isBadId(url))
+        ? `<a href="${url}" target="_blank" ${red ? 'class="em-red"' : ''}>${txt}</a>`
+        : `<span ${red ? 'class="em-red"' : ''}>${txt}</span>`;
+
+    const sortNum = parseAsNumber(row.t2 ?? txt);
+    const tdClass = isAlarmOn ? ' class="limit-alarm-cell"' : '';
+
+    tds.push(
+        `<td data-col="t2"${tdClass} ${Number.isFinite(sortNum) ? `data-sort-num="${sortNum}"` : ''}>${inner}</td>`
+    );
+    return;
+}
+
+
+
+              // --- ΔT --- (по флагу dt_red)
+              if (c.key === 'dt') {
+                  const url = row.id_dt;
+                  const txt = row.dt ?? '';
+                  const isRed = row.dt_red === true;
+
+                  if (isRed && dtAlarmOn) {
+                      hasAnyLimitAlarm = true;
+                  }
+
+                  const inner = (!isBadId(url))
+                      ? `<a href="${url}" target="_blank" ${isRed ? 'class="em-red"' : ''}>${txt}</a>`
+                      : `<span ${isRed ? 'class="em-red"' : ''}>${txt}</span>`;
+
+                  const sortNum = parseAsNumber(row.dt ?? txt);
+                  const tdClass = (isRed && dtAlarmOn) ? ' class="limit-alarm-cell"' : '';
+
+                  tds.push(
+                      `<td data-col="dt"${tdClass} ${Number.isFinite(sortNum) ? `data-sort-num="${sortNum}"` : ''}>${inner}</td>`
+                  );
+                  return;
+              }
+
+              // --- T4 (t41..t44) --- (уже по флагам)
+              if (c.key === 't41' || c.key === 't42' || c.key === 't43' || c.key === 't44') {
+                  const flagMap = {t41: 't41_red', t42: 't42_red', t43: 't43_red', t44: 't44_red'};
+                  const redFlagKey = flagMap[c.key];
+                  const isRed = row[redFlagKey] === true;
+                  const url = row[colIdKey];
+                  const txt = (row[c.key] ?? '');
+
+                  // если Alarma включена и значение красное -> включаем «флаг для звука»
+                  if (isRed && t4AlarmOn) {
+                      hasAnyLimitAlarm = true;
+                  }
+
+                  const inner = (!isBadId(url))
+                      ? `<a href="${url}" target="_blank" ${isRed ? 'class="em-red"' : ''}>${txt}</a>`
+                      : `<span ${isRed ? 'class="em-red"' : ''}>${txt}</span>`;
+
+                  const sortNum = parseAsNumber(row[c.key] ?? txt);
+
+                  // NEW: класс для оранжевой рамки
+                  const tdClass = (isRed && t4AlarmOn) ? ' class="limit-alarm-cell"' : '';
+
+                  tds.push(
+                      `<td data-col="${c.key}"${tdClass} ${Number.isFinite(sortNum) ? `data-sort-num="${sortNum}"` : ''}>${inner}</td>`
+                  );
+                  return;
+              }
+
+              // --- Tacm --- (по флагу tacm_red)
+              if (c.key === 'tacm') {
+                  const url = row.id_tacm;
+                  const txt = row.tacm ?? '';
+                  const isRed = row.tacm_red === true;
+
+                  if (isRed && tacmAlarmOn) {
+                      hasAnyLimitAlarm = true;
+                  }
+
+                  const inner = (!isBadId(url))
+                      ? `<a href="${url}" target="_blank" ${isRed ? 'class="em-red"' : ''}>${txt}</a>`
+                      : `<span ${isRed ? 'class="em-red"' : ''}>${txt}</span>`;
+
+                  const sortNum = parseAsNumber(row.tacm ?? txt);
+                  const tdClass = (isRed && tacmAlarmOn) ? ' class="limit-alarm-cell"' : '';
+
+                  tds.push(
+                      `<td data-col="tacm"${tdClass} ${Number.isFinite(sortNum) ? `data-sort-num="${sortNum}"` : ''}>${inner}</td>`
+                  );
+                  return;
+              }
+
+              // --- Gacm --- (по флагу gacm_red)
+              if (c.key === 'gacm') {
+                  const url = row.id_gacm;
+                  const txt = row.gacm ?? '';
+                  const isRed = row.gacm_red === true;
+
+                  if (isRed && gacmMaxAlarmOn) {
+                      hasAnyLimitAlarm = true;
+                  }
+
+                  const inner = (!isBadId(url))
+                      ? `<a href="${url}" target="_blank" ${isRed ? 'class="em-red"' : ''}>${txt}</a>`
+                      : `<span ${isRed ? 'class="em-red"' : ''}>${txt}</span>`;
+
+                  const sortNum = parseAsNumber(row.gacm ?? txt);
+                  const tdClass = (isRed && gacmMaxAlarmOn) ? ' class="limit-alarm-cell"' : '';
+
+                  tds.push(
+                      `<td data-col="gacm"${tdClass} ${Number.isFinite(sortNum) ? `data-sort-num="${sortNum}"` : ''}>${inner}</td>`
+                  );
+                  return;
+              }
+
+              // --- Gacm-P --- (только по флагу ΔGacm)
+              if (c.key === 'gacm_p') {
+                  const txt = row.gacm_p ?? '';
+                  const isRed = row.dgacm_red === true;
+                  const inner = `<span ${isRed ? 'class="em-red"' : ''}>${txt}</span>`;
+                  const sortNum = parseAsNumber(row.gacm_p ?? txt);
+                  tds.push(`<td data-col="gacm_p" ${Number.isFinite(sortNum) ? `data-sort-num="${sortNum}"` : ''}>${inner}</td>`);
+                  return;
+              }
+
+              // --- ΔGacm --- (только по флагу)
+              if (c.key === 'dgacm_val') {
+                  const txt = row.dgacm_val ?? '';
+                  const isRed = row.dgacm_red === true;
+                  const inner = `<span ${isRed ? 'class="em-red"' : ''}>${txt}</span>`;
+                  const sortNum = parseAsNumber(row.dgacm_val ?? txt);
+                  tds.push(`<td data-col="dgacm_val" ${Number.isFinite(sortNum) ? `data-sort-num="${sortNum}"` : ''}>${inner}</td>`);
+                  return;
+              }
+
+              // --- G1 --- (только по флагу)
+              if (c.key === 'g1') {
+                  const url = row.id_g1;
+                  const txt = row.g1 ?? '';
+                  const isRed = row.g1_red === true;
+                  const inner = (!isBadId(url))
+                      ? `<a href="${url}" target="_blank" ${isRed ? 'class="em-red"' : ''}>${txt}</a>`
+                      : `<span ${isRed ? 'class="em-red"' : ''}>${txt}</span>`;
+                  const sortNum = parseAsNumber(row.g1 ?? txt);
+                  tds.push(`<td data-col="g1" ${Number.isFinite(sortNum) ? `data-sort-num="${sortNum}"` : ''}>${inner}</td>`);
+                  return;
+              }
+
+              // --- ΔG% --- (только по флагу)
+              if (c.key === 'dg_pct') {
+                  const txt = row.dg_pct ?? '';
+                  const isRed = row.dgp_red === true;
+                  const inner = `<span ${isRed ? 'class="em-red"' : ''}>${txt}</span>`;
+                  const sortNum = parseAsNumber(row.dg_pct ?? txt);
+                  tds.push(`<td data-col="dg_pct" ${Number.isFinite(sortNum) ? `data-sort-num="${sortNum}"` : ''}>${inner}</td>`);
+                  return;
+              }
+
+              // --- ΔG --- (только по флагу)
+              if (c.key === 'dg') {
+                  const url = row.id_dg;
+                  const txt = row.dg ?? '';
+                  const isRed = row.dg_flow_red === true;
+                  const inner = (!isBadId(url))
+                      ? `<a href="${url}" target="_blank" ${isRed ? 'class="em-red"' : ''}>${txt}</a>`
+                      : `<span ${isRed ? 'class="em-red"' : ''}>${txt}</span>`;
+                  const sortNum = parseAsNumber(row.dg ?? txt);
+                  tds.push(`<td data-col="dg" ${Number.isFinite(sortNum) ? `data-sort-num="${sortNum}"` : ''}>${inner}</td>`);
+                  return;
+              }
+
+              // --- Gadaos --- (только по флагу)
+              if (c.key === 'g_adaos') {
+                  const url = row.id_g_adaos;
+                  const txt = row.g_adaos ?? '';
+                  const isRed = row.gadaos_red === true;
+                  const inner = (!isBadId(url))
+                      ? `<a href="${url}" target="_blank" ${isRed ? 'class="em-red"' : ''}>${txt}</a>`
+                      : `<span ${isRed ? 'class="em-red"' : ''}>${txt}</span>`;
+                  const sortNum = parseAsNumber(row.g_adaos ?? txt);
+                  tds.push(`<td data-col="g_adaos" ${Number.isFinite(sortNum) ? `data-sort-num="${sortNum}"` : ''}>${inner}</td>`);
+                  return;
+              }
+
+              // --- Data/Ora --- (оставляем существующий fallback)
+              if (c.key === 'time') {
+                  const txt = row.time || '';
+                  const iso = row.time_iso || '';
+                  const dataoraEn = document.getElementById('cond_dataora_enabled')?.checked;
+                  const limitH = parseFloat(document.getElementById('cond_dataora_limit')?.value || '0');
+
+                  // 1) Предпочитаем готовый флаг от бэкенда
+                  let isRed = dataoraEn && (row.dataora_red === true);
+
+                  // 2) Fallback — считаем на фронте по ISO (или dd-mm-yy, если ISO нет)
+                  if (dataoraEn && typeof row.dataora_red === 'undefined') {
+                      let ts = null;
+                      if (iso) {
+                          const d = new Date(iso);
+                          if (!isNaN(d)) ts = d.getTime();
+                      } else if (txt) {
+                          const m = /^(\d{2})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})$/.exec(txt);
+                          if (m) {
+                              const dd = +m[1], mm = +m[2], yy = +m[3], hh = +m[4], mi = +m[5];
+                              ts = new Date(2000 + yy, mm - 1, dd, hh, mi, 0, 0).getTime();
+                          }
+                      }
+                      if (ts !== null) {
+                          const diffH = (Date.now() - ts) / 3600000;
+                          if (diffH > limitH) isRed = true; // ">" чтобы совпадало с бэкендом
+                      }
+                  }
+
+                  // 3) Ключ сортировки — по ISO, запасной парсер dd-mm-yy
+                  let sortTs = null;
+                  if (iso) {
+                      const d = new Date(iso);
+                      if (!isNaN(d)) sortTs = d.getTime();
+                  } else if (txt) {
+                      const m = /^(\d{2})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})$/.exec(txt);
+                      if (m) {
+                          const dd = +m[1], mm = +m[2], yy = +m[3], hh = +m[4], mi = +m[5];
+                          sortTs = new Date(2000 + yy, mm - 1, dd, hh, mi, 0, 0).getTime();
+                      }
+                  }
+
+                  const inner = `<span ${isRed ? 'class="em-red"' : ''}>${txt}</span>`;
+                  tds.push(`<td data-col="time" ${sortTs !== null ? `data-sort-ts="${sortTs}"` : ''}>${inner}</td>`);
+                  return;
+              }
+
+              // --- default (Q, G2, dT, T31, T32 и т.п.) ---
+              const url = row[colIdKey];
+              const val = (row[c.key] ?? '');
+              const sortNum = parseAsNumber(val);
+              const extra = Number.isFinite(sortNum) ? ` data-sort-num="${sortNum}"` : '';
+              const inner = (!isBadId(url)) ? `<a href="${url}" target="_blank">${val}</a>` : String(val);
+              tds.push(`<td data-col="${c.key}"${extra}>${inner}</td>`);
+          });
+
+          const tr = document.createElement('tr');
+          tr.innerHTML = tds.join('');
+          tbodyEl.appendChild(tr);
+      });
+
+              setPumpShapeEvents();
+              if (isPompaVisible()) {
+                resyncPumpAlarmsFromDOM();
+              } else {
+                stopAllPumpAlarms();         // колонка скрыта → звук OFF
+              }
+
+              // Звук для всех лимитов (T4min, ΔTmin/T2, Tacm, Gacm max)
+              if (hasAnyLimitAlarm) {
+                t4AlarmStart();
+              } else {
+                t4AlarmStop();
+              }
+
+
+
+              const totalText = ` ${data.length} obiecte`;
+
+
+              // выводим TOTAL в шапку — span после кнопки Export Excel
+              const counterEl = document.getElementById('objectCounter');
+              if (counterEl) {
+                  counterEl.textContent = totalText;
+              }
+           }
+
+
+
+
+
+          function setPumpShapeEvents() {
+              const sound = alarmAudio;
+              if (!sound) return;
+
+              document.querySelectorAll('.pump-shape').forEach(el => {
+                  el.oncontextmenu = function (e) {
+                      e.preventDefault();
+
+                      const key = pumpKeyForEl(el);
+                      const armed = el.dataset.armed === '1';
+                      const isAlarm = el.dataset.alarm === '1';
+
+                      if (armed) {
+                          // КРУГ → КВАДРАТ (разоружить)
+                          el.dataset.armed = '0';
+                          el.style.borderRadius = '6px';
+                          el.innerHTML = '&#9632;';
+                          armedPumpKeys.delete(key);   // <-- NEW
+                          saveArmedToLS();             // <-- NEW
+                          alarmStopFor(key);
+                      } else {
+                          // КВАДРАТ → КРУГ (вооружить)
+                          el.dataset.armed = '1';
+                          el.style.borderRadius = '50%';
+                          el.innerHTML = '&#9679;';
+                          armedPumpKeys.add(key);      // <-- NEW
+                          saveArmedToLS();             // <-- NEW
+                          if (isAlarm) alarmStartFor(key);
+                      }
+                      return false;
+                  };
+              });
+          }
+
+
+          /* ===== Fetch & filter + error handling ===== */
+          const searchInput = document.getElementById('searchInput');
+          const errorBox = document.getElementById('errorBox');
+
+
+          // Нормализуем строку для поиска:
+  //  - приводим к нижнему регистру
+  //  - убираем диакритику (î, ă, ș, â, ț и т.п.)
+  function normalizeSearchText(value) {
+      let s = String(value || '').toLowerCase();
+
+      // Если браузер умеет Unicode normalize — используем
+      if (typeof s.normalize === 'function') {
+          s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      }
+
+      // На всякий случай явные замены (если normalize недоступен)
+      s = s
+          .replace(/[șş]/g, 's')
+          .replace(/[țţ]/g, 't')
+          .replace(/[ăâ]/g, 'a')
+          .replace(/[î]/g, 'i');
+
+      return s;
+  }
+
+
+
+
+
+          function showError(msg) {
+              errorBox.textContent = msg;
+              errorBox.classList.add('show');
+          }
+
+          function hideError() {
+              errorBox.classList.remove('show');
+              errorBox.textContent = '';
+          }
+
+          function buildApiUrl() {
+              const s = encodeURIComponent(getCurrentSeason());
+              const qs = new URLSearchParams({season: s});
+              const raion = getCurrentRaion();
+              if (raion && raion !== 'toate') {
+                  qs.set('raion', raion);
+              }
+
+              const t1en = document.getElementById('cond_t1min_enabled');
+              const t1v = document.getElementById('cond_t1min_t1');
+              const g1v = document.getElementById('cond_t1min_g1');
+              if (t1en && t1en.checked) {
+                  qs.set('t1min_enabled', '1');
+                  if (t1v?.value) qs.set('t1min_t1', String(t1v.value));
+                  if (g1v?.value) qs.set('t1min_g1', String(g1v.value));
+              }
+
+              const t4en = document.getElementById('cond_t4min_enabled');
+              const t4v = document.getElementById('cond_t4min_t4');
+              if (t4en && t4en.checked) {
+                  qs.set('t4min_enabled', '1');
+                  if (t4v?.value) qs.set('t4min_t4', String(t4v.value));
+              }
+
+              const dten = document.getElementById('cond_dtmin_enabled');
+              const dtv = document.getElementById('cond_dtmin_dt');
+              const t1over = document.getElementById('cond_dtmin_t1_over');
+              if (dten && dten.checked) {
+                  qs.set('dtmin_enabled', '1');
+                  if (dtv?.value) qs.set('dtmin_dt', String(dtv.value));
+                  if (t1over?.value) qs.set('dtmin_t1_over', String(t1over.value));
+              }
+
+              const tacmen = document.getElementById('cond_tacm_enabled');
+              const tacmMin = document.getElementById('cond_tacm_min');
+              const tacmMax = document.getElementById('cond_tacm_max');
+              if (tacmen && tacmen.checked) {
+                  qs.set('tacm_enabled', '1');
+                  if (tacmMin?.value) qs.set('tacm_min', String(tacmMin.value));
+                  if (tacmMax?.value) qs.set('tacm_max', String(tacmMax.value));
+              }
+
+              const gacmen = document.getElementById('cond_gacm_max_enabled');
+              const gacmVal = document.getElementById('cond_gacm_max');
+              if (gacmen && gacmen.checked) {
+                  qs.set('gacm_max_enabled', '1');
+                  if (gacmVal?.value) qs.set('gacm_max', String(gacmVal.value));
+              }
+
+              const dgacmEn = document.getElementById('cond_dgacm_enabled');
+              const dgacmAbs = document.getElementById('dgacm_abs');
+              const dgacmPct = document.getElementById('dgacm_pct');
+              if (dgacmEn && dgacmEn.checked) {
+                  qs.set('dgacm_enabled', '1');
+                  if (dgacmAbs?.value) qs.set('dgacm_abs', String(dgacmAbs.value));
+                  if (dgacmPct?.value) qs.set('dgacm_pct', String(dgacmPct.value));
+              }
+
+              const g1En = document.getElementById('cond_g1_min_enabled');
+              const g1Val = document.getElementById('cond_g1_min');
+              if (g1En && g1En.checked) {
+                  qs.set('g1_min_enabled', '1');
+                  if (g1Val?.value) qs.set('g1_min', String(g1Val.value));
+              }
+
+              const dgpEn = document.getElementById('cond_dgp_enabled');
+              const dgpVal = document.getElementById('cond_dgp_limit');
+              if (dgpEn && dgpEn.checked) {
+                  qs.set('dgp_enabled', '1');
+                  if (dgpVal?.value) qs.set('dgp_limit', String(dgpVal.value));
+              }
+
+              const dgflowEn = document.getElementById('cond_dg_flow_enabled');
+              const dgflowVal = document.getElementById('cond_dg_flow_limit');
+              if (dgflowEn && dgflowEn.checked) {
+                  qs.set('dg_flow_enabled', '1');
+                  if (dgflowVal?.value) qs.set('dg_flow_limit', String(dgflowVal.value));
+              }
+
+              const gadaosEn = document.getElementById('cond_gadaos_enabled');
+              const gadaosVal = document.getElementById('cond_gadaos_limit');
+              if (gadaosEn && gadaosEn.checked) {
+                  qs.set('gadaos_enabled', '1');
+                  if (gadaosVal?.value) qs.set('gadaos_limit', String(gadaosVal.value));
+              }
+
+              const dataoraEn = document.getElementById('cond_dataora_enabled');
+              const dataoraVal = document.getElementById('cond_dataora_limit');
+              if (dataoraEn && dataoraEn.checked) {
+                  qs.set('dataora_enabled', '1');
+                  if (dataoraVal?.value) qs.set('dataora_limit', String(dataoraVal.value));
+              }
+
+              // Pompa OFF
+              const pompaOffEn = document.getElementById('cond_pompa_off_enabled');
+              if (pompaOffEn && pompaOffEn.checked) {
+                  qs.set('pompa_off_enabled', '1');
+              }
+
+              // 220V OFF
+              const sursaOffEn = document.getElementById('cond_sursa_off_enabled');
+              if (sursaOffEn && sursaOffEn.checked) {
+                  qs.set('sursa_off_enabled', '1');
+              }
+
+
+              if (typeof getCheckedCols === 'function') {
+                  // getCheckedCols() уже использует чекбоксы в блоке "Coloane PTC"
+                  const cols = getCheckedCols().map(c => c.key);   // например: ['ptc','address','q1',...]
+                  if (cols.length) {
+                      qs.set('cols', cols.join(','));              // cols=ptc,address,q1,...
+                  }
+              }
+
+              qs.set('_', Date.now().toString());
+              return `/api/ptc/?${qs.toString()}`;
+          }
+
+          async function fetchData() {
+              try {
+                  const resp = await fetch(buildApiUrl(), {
+                      credentials: 'same-origin',
+                      headers: {'Accept': 'application/json'}
+                  });
+                  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                  const data = await resp.json();
+                  if (!Array.isArray(data)) throw new Error('Неверный формат ответа (ожидался массив)');
+                  hideError();
+                  return data;
+              } catch (e) {
+                  console.error('Ошибка загрузки /api/ptc/:', e);
+                  showError('Не удалось получить данные с /api/ptc/: ' + e.message + '. Откройте /api/ptc/ в новой вкладке и проверьте ответ.');
+                  return null;
+              }
+          }
+
+          let allData = [];
+
+
+          function filtersEnabled() {
+              const ids = [
+                  'cond_t1min_enabled', 'cond_t4min_enabled', 'cond_dtmin_enabled', 'cond_tacm_enabled',
+                  'cond_gacm_max_enabled', 'cond_dgacm_enabled', 'cond_g1_min_enabled', 'cond_dgp_enabled',
+                  'cond_dg_flow_enabled', 'cond_gadaos_enabled', 'cond_dataora_enabled',
+                  // новые:
+                  'cond_pompa_off_enabled', 'cond_sursa_off_enabled'
+              ];
+              return ids.some(id => document.getElementById(id)?.checked);
+          }
+
+          // ===== Condiții: master checkbox (ON/OFF all) =====
+function getConditionEnabledCheckboxes() {
+    // Берём ВСЕ чекбоксы внутри блока Condiții,
+    // исключая:
+    // - master (#cond_all_enabled)
+    // - alarm-чекбоксы (обычно они справа и имеют слово "alarm" или "alarma" в id/name)
+    return Array.from(document.querySelectorAll('#conditionsBlock input[type="checkbox"]'))
+        .filter(cb =>
+            cb.id !== 'cond_all_enabled' &&
+            !/alarm|alarma/i.test(cb.id || '') &&
+            !/alarm|alarma/i.test(cb.name || '')
+        );
+}
+
+
+function syncMasterConditionsCheckbox() {
+    const master = document.getElementById('cond_all_enabled');
+    if (!master) return;
+
+    const boxes = getConditionEnabledCheckboxes();
+    if (!boxes.length) {
+        master.checked = false;
+        return;
+    }
+
+    // Без mixed: master.checked=true только если ВСЕ включены
+    master.checked = boxes.every(cb => cb.checked);
+}
+
+(function initConditionsMasterToggle() {
+    const master = document.getElementById('cond_all_enabled');
+    if (!master) return;
+
+    // 1) при загрузке страницы — выставим master корректно
+    syncMasterConditionsCheckbox();
+
+    // 2) клик по master → включить/выключить ВСЕ условия
+    master.addEventListener('change', () => {
+        const boxes = getConditionEnabledCheckboxes();
+        boxes.forEach(cb => { cb.checked = master.checked; });
+
+        // сразу применяем: обновляем таблицу
+        refresh();
+    });
+
+    // 3) если пользователь меняет любую галочку условия → обновляем master (без mixed)
+    getConditionEnabledCheckboxes().forEach(cb => {
+        cb.addEventListener('change', () => {
+            syncMasterConditionsCheckbox();
+        });
+    });
+})();
+
+
+
+
+                  function applySearch(data) {
+              const termRaw = (searchInput.value || '').trim();
+              const term = normalizeSearchText(termRaw);
+              const filtersOn = filtersEnabled();
+
+              if (!term) {
+                  return data.filter(r => !r.excluded_all && !(filtersOn && r.excluded_by_params === true));
+              }
+
+              return data.filter(r => {
+                  const ptcNorm = normalizeSearchText(r.ptc);
+                  const addrNorm = normalizeSearchText(r.address);
+                  return ptcNorm.includes(term) || addrNorm.includes(term);
+              });
+          }
+
+          // ---- Фильтрация по Raion ----
+          function getCurrentRaion() {
+              const el = document.querySelector('input[name="raion"]:checked');
+              return el ? el.value : 'toate';
+          }
+
+          function rowMatchesRaion(row, raion) {
+              // "Toate" или пусто → не фильтруем
+              if (!raion || raion === 'toate') return true;
+
+              const ptcStr = String(row.ptc || '').trim();
+              if (!ptcStr) return false;
+
+              // Берём первую цифру из PTC (1xxx, 2xxx, 3xxx и т.д.)
+              const m = ptcStr.match(/^(\d)/);
+              if (!m) return false;
+
+              return m[1] === raion;
+          }
+
+          function applyRaionFilter(data) {
+              const raion = getCurrentRaion();
+              if (!raion || raion === 'toate') return data;
+              return data.filter(row => rowMatchesRaion(row, raion));
+          }
+
+                    // Общая функция: поиск + фильтр Raion + перерисовка + сортировка
+          function rerenderTable() {
+              const filtered = applyRaionFilter(applySearch(allData));
+              renderRows(filtered);
+              applyStoredSort();
+          }
+
+          // === Alarma-чекбоксы для лимитов (T4min, ΔTmin, Tacm, Gacm max)
+          // переключение только пересобирает таблицу из allData — без запроса на сервер
+          ['cond_t4min_alarm', 'cond_dtmin_alarm', 'cond_tacm_alarm', 'cond_gacm_max_alarm']
+              .forEach(id => {
+                  const el = document.getElementById(id);
+                  if (el) {
+                      el.addEventListener('change', () => {
+                          // просто перегоняем уже загруженные данные через renderRows
+                          rerenderTable();
+                      });
+                  }
+              });
+
+          async function refresh() {
+              const data = await fetchData();
+              if (data) {
+                  allData = data;
+              }
+              buildHeader();
+              rerenderTable();
+          }
+
+          // Auto-refresh
+          let autoTimer = null;
+
+          function scheduleAutoRefresh() {
+              if (autoTimer) {
+                  clearInterval(autoTimer);
+                  autoTimer = null;
+              }
+              const s = getCurrentSeason();
+              if (s === 'Toate') return;              // Toate — без автообновления
+              autoTimer = setInterval(refresh, 30000); // Iarnă/Vară — каждые 30 сек
+          }
+
+          document.getElementById('refreshBtn').onclick = refresh;
+
+          // поиск
+          searchInput.addEventListener('input', () => {
+              rerenderTable();
+          });
+
+          // смена набора колонок
+          document.querySelectorAll('#columnsList input[type="checkbox"]').forEach(cb => {
+              cb.addEventListener('change', () => {
+                  saveCheckedToLS();
+                  buildHeader();
+                  rerenderTable();
+              });
+          });
+
+          function updateConditionsEnabled() {
+              const block = document.getElementById('conditionsBlock');
+              block.classList.remove('is-disabled');
+              block.querySelectorAll('input, select, button').forEach(el => {
+                  el.disabled = false;
+              });
+          }
+
+          // смена сезона (Iarnă / Vară / Toate)
+          document.querySelectorAll('input[name="season"]').forEach(r => {
+              r.addEventListener('change', () => {
+                  const s = getCurrentSeason();
+                  try {
+                      localStorage.setItem(LS_SEASON, s);
+                  } catch (e) {
+                  }
+                  setColumnsBySeason(s);
+                  updateConditionsEnabled();
+                  buildHeader();
+                  rerenderTable();    // применяем к уже загруженным данным
+                  refresh();          // и параллельно тянем свежие
+                  scheduleAutoRefresh();
+              });
+          });
+
+
+          // смена Raion (Toate / 1 / 2 / 3 / 4 / 5)
+          document.querySelectorAll('input[name="raion"]').forEach(r => {
+              r.addEventListener('change', () => {
+                  rerenderTable();
+              });
+          });
+
+          [   'cond_t1min_enabled', 'cond_t1min_t1', 'cond_t1min_g1',
+              'cond_t4min_enabled', 'cond_t4min_t4',
+              'cond_dtmin_enabled', 'cond_dtmin_dt', 'cond_dtmin_t1_over',
+              'cond_tacm_enabled', 'cond_tacm_min', 'cond_tacm_max',
+              'cond_gacm_max_enabled', 'cond_gacm_max',
+              'cond_dgacm_enabled', 'dgacm_abs', 'dgacm_pct',
+              'cond_g1_min_enabled', 'cond_g1_min',
+              'cond_dgp_enabled', 'cond_dgp_limit',
+              'cond_dg_flow_enabled', 'cond_dg_flow_limit',
+              'cond_gadaos_enabled', 'cond_gadaos_limit',
+              'cond_dataora_enabled', 'cond_dataora_limit',
+              'cond_pompa_off_enabled',
+              'cond_sursa_off_enabled',
+          ]
+              .forEach(id => {
+                  const el = document.getElementById(id);
+                  if (el) el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', () => {
+                      refresh();
+                  });
+              });
+
+          const seasonRestored = restoreSeason();
+          const hadSaved = restoreCheckedFromLS();
+          if (!hadSaved) {
+              setColumnsBySeason(seasonRestored || 'Iarna');
+          }
+          updateConditionsEnabled();
+
+restoreSortState();
+buildHeader();
+refresh();
+
+syncMasterConditionsCheckbox();
+
+scheduleAutoRefresh();
+
+
+
+
+                  // === Export Excel ===
+          const exportBtn = document.getElementById('exportExcel');
+          if (exportBtn && typeof buildApiUrl === 'function') {
+              exportBtn.addEventListener('click', function () {
+                  // buildApiUrl() уже собирает ВСЕ те же GET-параметры, что и для таблицы
+                  const apiUrl = buildApiUrl();           // например: "/monitoring/api/ptc/?season=Iarna&..."
+                  const qs = apiUrl.split('?')[1] || '';  // забираем всё после "?"
+
+                  // ТЕКУЩАЯ ТЕМА: берём с <html data-theme="...">
+                  const theme = document.documentElement.getAttribute('data-theme') || 'light';
+
+                  // Собираем новый querystring: старые параметры + theme=...
+                  const params = new URLSearchParams(qs || '');
+                  params.set('theme', theme);
+
+                  // Отдаём браузеру запрос к Excel-вью с теми же параметрами + тема
+                  window.location = '/export-excel/?' + params.toString();
+              });
+          }
+
+      })();
+</script>
+
+<script>
+    (function() {
+        const toggleSwitch = document.getElementById('themeSwitch');
+        const docEl = document.documentElement;
+        if (!toggleSwitch) return;
+
+        // читаем уже установленную тему с <html data-theme="...">
+        const current = docEl.getAttribute('data-theme') || 'light';
+        toggleSwitch.checked = (current === 'dark');
+
+        toggleSwitch.addEventListener('change', function() {
+            const theme = this.checked ? 'dark' : 'light';
+            docEl.setAttribute('data-theme', theme);
+            try {
+                localStorage.setItem('theme', theme);
+            } catch (e) {
+                // игнорируем
+            }
+        });
+    })();
+</script>
+</body>
+</html>

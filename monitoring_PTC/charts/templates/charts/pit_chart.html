@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>LR Chart</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Chart libs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.30.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.2.0/chartjs-plugin-zoom.min.js"></script>
+
+    <style>
+        /* ТЕМЫ */
+        body.theme-light { background-color: #f8f9fa; color: #212529; }
+        .theme-light .navbar { background-color: #7291bf !important; }
+        .theme-light #left-panel { background-color: #ffffff !important; border-color: #dee2e6 !important; }
+        .theme-light #right-content { background-color: #f8f9fa; color: #212529; }
+        .theme-light #show-btn, .theme-light #hide-btn { background-color: #7291bf; border-color: #7291bf; }
+
+        body.theme-dark { background-color: #495057; color: #f8f9fa; }
+        .theme-dark .navbar { background-color: #343a40 !important; }
+        .theme-dark #left-panel { background-color: #212529 !important; color: #f8f9fa; border-color: #495057 !important; }
+        .theme-dark #right-content { background-color: #495057; color: #f8f9fa; }
+        .theme-dark .btn-secondary { background-color: #6c757d; border-color: #6c757d; }
+
+        /* Лейаут: высота зависит от реальной высоты навбара */
+        :root { --navH: 56px; }
+        html, body { height: 100%; overflow: hidden; }
+        .navbar { position: sticky; top: 0; z-index: 1030; }
+        .main-container { display: flex; height: calc(100vh - var(--navH, 56px)); }
+
+        /* Сайдбар и контент */
+        #left-panel { width: 260px; position: relative; transition: margin-left .3s; flex-shrink: 0; overflow-y: auto; }
+        #right-content { flex: 1; padding: 16px; transition: all .3s; overflow-y: auto; height: 100%; }
+
+        /* Кнопки показать/скрыть сайдбар */
+        #hide-btn { position: absolute; top: 0; right: 0; bottom: 0; width: 25px; border-radius: 0; writing-mode: vertical-rl; text-orientation: mixed; padding: 0; }
+        #show-btn { position: fixed; left: 0; bottom: 0; width: 25px; border-radius: 0; writing-mode: vertical-rl; text-orientation: mixed; padding: 0; z-index: 1000; display: none; }
+        #left-panel.hidden { margin-left: -260px; }
+        #right-content.content-shifted { margin-left: 25px; }
+
+        /* Ресайзер */
+        #left-panel-resizer { position: absolute; top: 0; right: 0; width: 6px; height: 100%; cursor: ew-resize; z-index: 1100; background: rgba(13,110,253,.15); }
+        #left-panel-resizer:hover { background: rgba(13,110,253,.35); }
+
+        /* Toolbar в шапке: всегда в одну строку */
+        .toolbar { display: flex; align-items: center; gap: .5rem; flex-wrap: nowrap; overflow-x: auto; }
+        .toolbar .group { display: inline-flex; align-items: center; gap: .25rem; white-space: nowrap; }
+        .toolbar label { color: rgba(255,255,255,.85); margin: 0; font-size: .875rem; }
+
+        /* График */
+        .chart-title{ display:inline-block; margin:2px 0 6px 2px; padding:4px 8px; border:1px solid #dee2e6; border-radius:6px; background:#f8f9fa; color:#212529; font-weight:600; font-size:16px; }
+        body.theme-dark .chart-title{ background:#343a40; color:#f8f9fa; border-color:#495057; }
+        .chart-wrap{
+            position:relative;
+            height:max(320px,calc(100vh - 260px));
+            min-height:320px;
+            border:1px solid #dee2e6;
+            overflow: visible;          /* <--- добавили */
+        }
+
+        body.theme-dark .chart-wrap{ border-color:#495057; }
+        .chart-wrap canvas{ width:100%!important; height:100%!important; }
+        .chart-wrap canvas.is-panning{ cursor:grabbing; }
+
+        .stats-bars{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
+        .statbar{ border:1px solid #dee2e6; border-radius:8px; padding:6px 8px; font-size:12px; color:#6c757d; background:transparent; }
+        body.theme-dark .statbar{ border-color:#495057; color:#ced4da; }
+        .statbar .hdr{ display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+        .badge-dot{ width:18px; height:6px; border-radius:999px; display:inline-block; margin-right:6px; }
+        .kvs{ display:flex; gap:12px; flex-wrap:wrap; }
+
+        /* Tooltip */
+        .cjs-tooltip{
+          position:absolute; left:0; top:0; transform:translate(-50%,-120%);
+          background:#fff; color:#111827; border:1px solid #cbd5e1; border-radius:6px;
+          box-shadow:0 8px 24px rgba(0,0,0,.08); padding:12px; pointer-events:none; opacity:0;
+          min-width:240px; max-width:360px;
+        }
+        .cjs-tooltip .ct-title{ font-size:14px; font-weight:600; margin-bottom:6px; }
+        .cjs-tooltip .ct-row{ display:flex; align-items:center; gap:8px; font-size:13px; font-weight:500 }
+        .cjs-tooltip .ct-dot{ width:8px; height:8px; border-radius:50%; background:#ef4444; border:1px solid #ef4444 }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-dark">
+    <div class="container-fluid">
+        <!-- Левая часть -->
+        <div class="d-flex align-items-center gap-2">
+            <a href="http://10.1.1.248:1010/" class="btn btn-outline-light btn-sm" target="_blank" rel="noopener">SCADA
+                Portal</a>
+            <button class="btn btn-outline-light btn-sm" id="btn-refresh" title="Reactualizare">Reactualizare</button>
+            <div class="form-check form-check-inline ms-2">
+                <input class="form-check-input" type="checkbox" id="chk-auto">
+                <label class="form-check-label text-white" for="chk-auto">Auto reactualizare</label>
+            </div>
+        </div>
+
+        <!-- Центр: все фильтры — ОДНА ЛИНИЯ -->
+        <div class="toolbar flex-grow-1 mx-3">
+            <div class="group">
+                <label>De la</label>
+                <input type="date" id="date-from" class="form-control form-control-sm">
+                <input type="time" id="time-from" step="60" class="form-control form-control-sm">
+            </div>
+
+            <div class="group">
+                <label>Până la</label>
+                <input type="date" id="date-to" class="form-control form-control-sm">
+                <input type="time" id="time-to" step="60" class="form-control form-control-sm">
+            </div>
+
+            <div class="group">
+                <label>Tip</label>
+                <select id="sel-tip" class="form-select form-select-sm">
+                    <option value="detaliat">Detaliat</option>
+                    <option value="orar">Orar</option>
+                    <option value="zilnic">Zilnic</option>
+                </select>
+            </div>
+
+            <div class="group">
+                <label>II obiect</label>
+                <select id="sel-obj" class="form-select form-select-sm"></select>
+            </div>
+
+            <div class="group">
+                <label>II parametru</label>
+                <select id="sel-param2" class="form-select form-select-sm">
+                    <option value="">Fără</option>
+                    <option value="T1">T1</option>
+                    <option value="T2">T2</option>
+                    <option value="T31">T31</option>
+                    <option value="T32">T32</option>
+                    <option value="T41">T41</option>
+                    <option value="T42">T42</option>
+                    <option value="T43">T43</option>
+                    <option value="T44">T44</option>
+                    <option value="Q1">Q</option>
+                    <option value="G1">G1</option>
+                    <option value="G2">G2</option>
+                    <option value="DG">ΔG</option>
+                    <option value="DT">ΔT</option>
+                    <option value="TACM">Tacm</option>
+                    <option value="GACM">Gacm</option>
+                    <option value="GADAOS">Gadaos</option>
+                    <option value="SURSA">220V/Sursa</option>
+                    <option value="POMPA">Pompa</option>
+                    <option value="POMPA2">Pompa2</option>
+                    <option value="POMPA3">Pompa3</option>
+                </select>
+            </div>
+
+            <div class="group">
+                <input class="form-check-input" type="checkbox" id="chk-zero">
+                <label for="chk-zero">Scara de la zero</label>
+            </div>
+            <div class="group">
+                <input class="form-check-input" type="checkbox" id="chk-2y">
+                <label for="chk-2y">2 axe Y</label>
+            </div>
+        </div>
+
+        <!-- Правая часть: кнопка темы ☀️/🌙 -->
+        <div class="d-flex align-items-center">
+            <button id="btn-theme" class="btn btn-outline-light btn-sm" title="Temă">☀️/🌙</button>
+            <!-- Скрытый переключатель (оставлен для совместимости кода) -->
+            <input type="checkbox" id="themeSwitch" class="d-none">
+        </div>
+    </div>
+</nav>
+
+<div class="main-container">
+    <!-- ЛЕВАЯ ПАНЕЛЬ: только Parametri → ID LOVATI -->
+    <aside id="left-panel" class="bg-light p-3 border-end">
+        <button id="hide-btn" class="btn btn-secondary" title="Скрыть панель" aria-controls="left-panel"
+                aria-expanded="true">&laquo;
+        </button>
+        <div id="left-panel-resizer" title="Тянуть для изменения ширины" aria-hidden="true"></div>
+
+        <h1 class="h5 mb-3">Parametri</h1>
+
+        <div class="mb-2"><small>ID LOVATI:</small> <strong id="sb-idlovati">—</strong></div>
+    </aside>
+
+    <main id="right-content">
+        <div id="chart-title" class="chart-title"></div>
+        <div class="chart-wrap">
+            <canvas id="chart"></canvas>
+        </div>
+
+        <div class="stats-bars">
+            <div class="statbar" id="bar-t1">
+                <div class="hdr"><i class="badge-dot" style="background:#ef4444"></i><b>T1, °C</b></div>
+                <div class="kvs" id="stats-t1"></div>
+            </div>
+            <div class="statbar" id="bar-t2" style="display:none">
+                <div class="hdr"><i class="badge-dot" style="background:#3b82f6"></i><b>—</b></div>
+                <div class="kvs" id="stats-t2"></div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<button id="show-btn" class="btn btn-secondary" title="Показать панель" aria-controls="left-panel"
+        aria-expanded="false">&raquo;
+</button>
+
+<script>window.API_BASE = '/charts/api/';</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    /* ====== Утилиты и состояние ====== */
+    const $ = (id) => document.getElementById(id);
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const __qs = new URLSearchParams(location.search);
+    const PARAM = (__qs.get('param') || 'T1').toUpperCase();
+
+    const selObj = $('sel-obj'), selTip = $('sel-tip'), selParam2 = $('sel-param2');
+    const dateFrom = $('date-from'), timeFrom = $('time-from'), dateTo = $('date-to'), timeTo = $('time-to');
+    const chkZero = $('chk-zero'), chkAuto = $('chk-auto'), chk2Y = $('chk-2y');
+
+    let chart = null; let autoTimer = null; let objects = []; let currentPTI = null;
+    let isObjectLocked = false;
+    let lockedPTI = null;
+
+    const UNITS = { T1:'°C', T2:'°C', T31:'°C', T32:'°C', T41:'°C', T42:'°C', T43:'°C', T44:'°C', Q1:'kW', G1:'m³/h', G2:'m³/h', DG:'m³/h', DT:'°C', TACM:'°C', GACM:'m³/h', GADAOS:'m³/h', SURSA:'220V', POMPA:'', POMPA2:'', POMPA3:''};
+    const AGG_MAP = { detaliat:'detaliat', detail:'detaliat', orar:'orar', hour:'orar', zilnic:'zilnic', day:'zilnic' };
+    const normAgg = v => AGG_MAP[String(v||'').toLowerCase()] || 'detaliat';
+
+    /* ====== Тема: кнопка ☀️/🌙 ====== */
+    function applyTheme(theme){
+      if(theme === 'dark'){
+        document.body.classList.remove('theme-light');
+        document.body.classList.add('theme-dark');
+        $('themeSwitch').checked = true;
+      } else {
+        document.body.classList.remove('theme-dark');
+        document.body.classList.add('theme-light');
+        $('themeSwitch').checked = false;
+      }
+      localStorage.setItem('theme', theme);
+      reapplyChartColors();
+    }
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    applyTheme(savedTheme);
+    $('btn-theme').addEventListener('click', () => {
+      const to = document.body.classList.contains('theme-dark') ? 'light' : 'dark';
+      applyTheme(to);
+    });
+
+    /* ====== Время по умолчанию ====== */
+    (function initTime(){
+      const now = new Date(); const s = new Date(now); s.setHours(0,0,0,0);
+      dateFrom.value = `${s.getFullYear()}-${pad2(s.getMonth()+1)}-${pad2(s.getDate())}`;
+      timeFrom.value = `00:00`;
+      dateTo.value   = `${s.getFullYear()}-${pad2(s.getMonth()+1)}-${pad2(s.getDate())}`;
+      timeTo.value   = `23:59`;
+    })();
+
+    /* ====== API / данные ====== */
+    async function loadObjects(){
+      const r = await fetch(window.API_BASE + 'objects/?types=0,1');
+      objects = await r.json();
+      selObj.innerHTML = '';
+      for (const o of objects){
+        const opt = document.createElement('option');
+        opt.value = o.pti; opt.textContent = o.pti;
+        opt.dataset.adres = o.adres || '';
+        opt.dataset.idT1 = (o.ids?.t1 || o.id_t1 || '');
+        opt.dataset.idT2 = (o.ids?.t2 || o.id_t2 || '');
+        selObj.appendChild(opt);
+      }
+      if (objects.length){ currentPTI = objects[0].pti; selObj.value = currentPTI; }
+    }
+
+    async function lookupParamId(pti, param){
+      const url = new URL(window.API_BASE + 'param-id/', window.location.origin);
+      url.searchParams.set('pti', String(pti));
+      url.searchParams.set('param', String(param));
+      const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json(); return {ips: j?.ips ?? null, param_id: j?.param_id ?? null};
+    }
+
+    async function updateLovati(){
+  const basePTI = lockedPTI ?? currentPTI;
+  const opt = [...selObj.options].find(o => o.value === String(basePTI));
+  if (!opt){ $('sb-idlovati').textContent = '—'; return; }
+  const chosen = PARAM; let id = null;
+  if (chosen === 'T1' && opt.dataset.idT1) id = opt.dataset.idT1;
+  else if (chosen === 'T2' && opt.dataset.idT2) id = opt.dataset.idT2;
+  else { try { const info = await lookupParamId(opt.value, chosen); id = info?.param_id || null; } catch(e){ id = null; } }
+  $('sb-idlovati').textContent = id || '—';
+}
+
+    function uiRangeISO(){
+      const start = `${dateFrom.value}T${timeFrom.value}:00`;
+      const end   = `${dateTo.value}T${timeTo.value}:00`;
+      return {startISO:start, endISO:end};
+    }
+
+    async function fetchSeries(pti, param, startISO, endISO){
+      const url = new URL(window.API_BASE + 'series/', window.location.origin);
+      url.searchParams.set('pti', pti); url.searchParams.set('param', param);
+      url.searchParams.set('start', startISO); url.searchParams.set('end', endISO);
+      const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }
+
+    function toPairs(labels, values){
+      const out=[]; for (let i=0;i<labels.length;i++){
+        const ts = Date.parse(String(labels[i]).trim()); if (!Number.isFinite(ts)) continue;
+        const y = Number(values[i]); if (!Number.isFinite(y)) continue; out.push({x:ts,y});
+      }
+      out.sort((a,b)=>a.x-b.x); return out;
+    }
+
+    function aggregate(pairs, tip){
+      if (tip === 'detaliat') return pairs; const m = new Map();
+      for (const p of pairs){ const d=new Date(p.x); let bucket;
+        if (tip==='orar') bucket=new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()).getTime();
+        else bucket=new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        const agg=m.get(bucket)||{sum:0,n:0,t:bucket}; agg.sum+=p.y; agg.n+=1; m.set(bucket,agg); }
+      const out=[]; for(const agg of m.values()) out.push({x:agg.t,y:agg.sum/agg.n}); out.sort((a,b)=>a.x-b.x); return out;
+    }
+
+    function stats(values){
+      const n=values.length; if(!n) return {n:0,min:null,max:null,mean:null,median:null,mode:null,var:null,std:null};
+      const s=[...values].sort((a,b)=>a-b); const min=s[0],max=s[n-1];
+      const sum=values.reduce((a,b)=>a+b,0); const mean=sum/n; const median=(n%2)?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2;
+      const freq=new Map(); let bestVal=null,bestCnt=0; for(const v of values){ const k=Math.round(v*100)/100; const c=(freq.get(k)||0)+1; freq.set(k,c); if(c>bestCnt){bestCnt=c;bestVal=k;} }
+      const variance=values.reduce((x,v)=>x+(v-mean)*(v-mean),0)/n; const stdev=Math.sqrt(variance);
+      return {n,min,max,mean,median,mode:(bestCnt>1?Number(bestVal):null),var:variance,std:stdev};
+    }
+
+    function statHtml(s){ const fmt=v=>v==null?'—':(Math.round(v*100)/100).toFixed(2);
+      return `<span>Maximum: <b>${fmt(s.max)}</b></span>
+              <span>Minimum: <b>${fmt(s.min)}</b></span>
+              <span>Medie: <b>${fmt(s.mean)}</b></span>
+              <span>Modă: <b>${fmt(s.mode)}</b></span>
+              <span>Mediană: <b>${fmt(s.median)}</b></span>
+              <span>Dispersie: <b>${fmt(s.var)}</b></span>
+              <span>Abatere standard: <b>${fmt(s.std)}</b></span>`; }
+
+    function updateChartTitle(){
+  const box=$('chart-title'); if(!box) return;
+  const basePTI = lockedPTI ?? currentPTI;
+  const opt = [...selObj.options].find(o => o.value === String(basePTI));
+  if(!opt){ box.textContent=''; return; }
+  const adr=(opt.dataset.adres||'').trim();
+  const unit=UNITS[PARAM]||'';
+  box.textContent = `${opt.value}${adr ? ` (${adr})` : ''}: ${PARAM}${unit ? ', ' + unit : ''}`;
+}
+
+    function getXBounds(ds1, ds2){ const all=[...ds1,...ds2]; if(!all.length) return {minX:null,maxX:null};
+      let minX=all[0].x,maxX=all[0].x; for(const p of all){ if(p.x<minX)minX=p.x; if(p.x>maxX)maxX=p.x; } return {minX,maxX}; }
+
+    function getTimeGrid(spanMs, tip){ const H=3600*1000, D=24*H; const agg=normAgg(tip);
+      if(agg==='zilnic' || spanMs>=5*D) return {unit:'day',step:1}; if(agg==='orar' || spanMs>=12*H) return {unit:'hour',step:1}; return {unit:'hour',step:1}; }
+
+    function yBoundsFor(ds, beginAtZero){ if(!ds||!ds.length) return {min:undefined,max:undefined};
+      let min=ds[0].y,max=ds[0].y; for(const p of ds){ if(p.y<min)min=p.y; if(p.y>max)max=p.y; }
+      if(min===max){ const pad=(min===0?1:Math.max(Math.abs(min)*0.05,0.5)); return beginAtZero?{min:0,max:min+pad}:{min:min-pad,max:max+pad}; }
+      return { min: beginAtZero ? undefined : Math.floor(min), max: Math.ceil(max) };
+    }
+
+    function externalHtmlTooltip(context) {
+  const { chart, tooltip } = context;
+  const container = document.querySelector(".chart-wrap");
+  let el = container.querySelector(".cjs-tooltip");
+
+  // создаём div, если ещё нет
+  if (!el) {
+    el = document.createElement("div");
+    el.className = "cjs-tooltip";
+    container.appendChild(el);
+  }
+
+  // если тултип должен исчезнуть
+  if (tooltip.opacity === 0) {
+    el.style.opacity = 0;
+    return;
+  }
+
+  // заголовок + строки значений
+  const title = (tooltip.title && tooltip.title[0]) ? tooltip.title[0] : "";
+  const rows = (tooltip.dataPoints || [])
+    .map((dp) => {
+      const label = dp.dataset.label || "";
+      const value = dp.formattedValue;
+      return `<div class="ct-row"><span class="ct-dot"></span><span>${label}</span><span>: ${value}</span></div>`;
+    })
+    .join("");
+
+  el.innerHTML = `<div class="ct-title">${title}</div>${rows}`;
+
+  // цвет точки в тултипе = цвет серии
+  const idx = tooltip.dataPoints && tooltip.dataPoints[0] ? tooltip.dataPoints[0].datasetIndex : 0;
+  const ds = chart.data.datasets && chart.data.datasets[idx];
+  let color = ds && ds.borderColor;
+  if (Array.isArray(color)) color = color[0];
+  if (!color) color = "#ef4444";
+  el.querySelectorAll(".ct-dot").forEach((dot) => {
+    dot.style.background = color;
+    dot.style.borderColor = color;
+  });
+
+  // базовая позиция (как было раньше)
+  const canvasBox = chart.canvas.getBoundingClientRect();
+  const containerBox = container.getBoundingClientRect();
+  let left = (canvasBox.left - containerBox.left) + tooltip.caretX;
+  let top  = (canvasBox.top  - containerBox.top)  + tooltip.caretY;
+
+  // --- КЛАМПИНГ, чтобы тултип не вылезал за края контейнера ---
+  const padding = 12;                                    // маленький отступ от краёв
+  const tooltipWidth  = el.offsetWidth  || 0;
+  const tooltipHeight = el.offsetHeight || 0;
+  const containerWidth  = containerBox.width;
+  const containerHeight = containerBox.height;
+
+  // учёт transform: translate(-50%, -120%)
+  const halfW = tooltipWidth / 2;
+
+  const minLeft = padding + halfW;
+  const maxLeft = containerWidth - padding - halfW;
+
+  // по вертикали тултип висит над точкой, поэтому берём «чуть ниже верха» и чуть выше низа
+  const minTop = padding + tooltipHeight;
+  const maxTop = containerHeight - padding;
+
+  if (containerWidth > 0) {
+    left = Math.min(Math.max(left, minLeft), maxLeft);
+  }
+  if (containerHeight > 0) {
+    top = Math.min(Math.max(top, minTop), maxTop);
+  }
+
+  el.style.opacity = 1;
+  el.style.left = left + "px";
+  el.style.top  = top  + "px";
+}
+
+
+    function reapplyChartColors(){
+      if(!chart) return;
+      const isDark = document.body.classList.contains('theme-dark');
+      const gridColor  = isDark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.06)';
+      const gridBorder = isDark ? 'rgba(255,255,255,.22)' : '#dee2e6';
+      const tickColor  = isDark ? '#ced4da' : '#6c757d';
+      chart.options.scales.x.grid.color = gridColor; chart.options.scales.x.grid.borderColor = gridBorder; chart.options.scales.x.ticks.color = tickColor;
+      chart.options.scales.y.grid.color = gridColor; chart.options.scales.y.grid.borderColor = gridBorder; chart.options.scales.y.ticks.color = tickColor;
+      if(chart.options.scales.y2){ chart.options.scales.y2.grid.color = gridColor; chart.options.scales.y2.grid.borderColor = gridBorder; chart.options.scales.y2.ticks.color = tickColor; }
+      chart.update('none');
+    }
+
+    async function draw(){
+  const basePTI = String(lockedPTI ?? currentPTI ?? selObj.value ?? '');
+  if(!basePTI) return;
+
+  const {startISO,endISO}=uiRangeISO();
+  const tip = normAgg(selTip.value);
+  const p1  = PARAM;                          // базовый параметр (красная)
+  const p2  = (selParam2.value||'').trim();   // параметр сравнения (синяя)
+  const comparePTI = String(selObj.value || basePTI);
+
+  // базовая серия — всегда по basePTI
+  const s1 = await fetchSeries(basePTI, p1, startISO, endISO);
+  const ds1 = aggregate(s1 ? toPairs(s1.labels, s1.values) : [], tip);
+
+  // синяя серия — только если выбран p2
+  let ds2 = [];
+  if (p2){
+    const s2 = await fetchSeries(comparePTI, p2, startISO, endISO);
+    ds2 = aggregate(s2 ? toPairs(s2.labels, s2.values) : [], tip);
+  }
+
+  whenWrapVisible(()=>{
+    renderChart(ds1, ds2, { basePTI, comparePTI, p1, p2 });
+    updateChartTitle();
+
+    const st1 = stats(ds1.map(p=>p.y));
+    $('stats-t1').innerHTML = statHtml(st1);
+    const unit1=UNITS[p1]||'';
+    const hdr1=document.querySelector('#bar-t1 .hdr b');
+    if(hdr1) hdr1.textContent = `${p1}${unit1 ? ', ' + unit1 : ''}`;
+
+    if(p2 && ds2.length){
+      const st2=stats(ds2.map(p=>p.y));
+      $('stats-t2').innerHTML = statHtml(st2);
+      const unit2=UNITS[p2]||'';
+      const hdr2=document.querySelector('#bar-t2 .hdr b');
+      if(hdr2) hdr2.textContent = `${p2}${unit2 ? ', ' + unit2 : ''}`;
+      $('bar-t2').style.display='block';
+    } else {
+      $('stats-t2').innerHTML=''; $('bar-t2').style.display='none';
+    }
+  });
+}
+
+
+
+    function whenWrapVisible(cb){ const el=document.querySelector('.chart-wrap'); const check=()=>{ const r=el.getBoundingClientRect(); const visible=r.width>0 && r.height>0 && getComputedStyle(el).display!=='none' && getComputedStyle(el).visibility!=='hidden'; if(visible) cb(); else requestAnimationFrame(check); }; check(); }
+
+    function renderChart(
+  ds1,
+  ds2,
+  meta = { basePTI: currentPTI, comparePTI: selObj.value, p1: PARAM, p2: (selParam2.value || "").trim() }
+) {
+  const ctx = $("chart");
+  if (chart) chart.destroy();
+
+  const { minX, maxX } = getXBounds(ds1, ds2);
+  let viewMin = minX, viewMax = maxX;
+  if (Number.isFinite(minX) && Number.isFinite(maxX)) {
+    if (maxX === minX) { const halfHour = 30 * 60 * 1000; viewMin = minX - halfHour; viewMax = maxX + halfHour; }
+    else {
+      const delta = maxX - minX;
+      const pad = Math.min(delta * 0.02, 30 * 60 * 1000);
+      viewMin = minX + pad; viewMax = maxX - pad;
+      if (viewMax <= viewMin) { viewMin = minX; viewMax = maxX; }
+    }
+  }
+  const span = (Number.isFinite(viewMin) && Number.isFinite(viewMax)) ? (viewMax - viewMin) : 0;
+  const gridTime = getTimeGrid(span, selTip.value);
+
+  const twoY = !!chk2Y.checked && ds2.length > 0;
+  const b1 = twoY ? yBoundsFor(ds1, chkZero.checked) : yBoundsFor([...ds1, ...ds2], chkZero.checked);
+  const b2 = twoY ? yBoundsFor(ds2, chkZero.checked) : { min: undefined, max: undefined };
+
+  Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      datasets: [
+        {
+          label: `${meta.basePTI}: ${meta.p1}${UNITS[meta.p1] ? ", " + UNITS[meta.p1] : ""}`,
+          data: ds1, parsing: false,
+          borderColor: "#ef4444", backgroundColor: "transparent",
+          pointBackgroundColor: "#ef4444", pointBorderColor: "#ffffff",
+          pointBorderWidth: 1.5, pointRadius: 3.5, pointHoverRadius: 6,
+          borderWidth: 3, tension: 0, spanGaps: true, hidden: ds1.length === 0, yAxisID: "y",
+        },
+        ...(ds2.length
+          ? [
+              {
+                label: `${meta.comparePTI}: ${meta.p2}${UNITS[meta.p2] ? ", " + UNITS[meta.p2] : ""}`,
+                data: ds2, parsing: false,
+                borderColor: "#3b82f6", backgroundColor: "transparent",
+                pointBackgroundColor: "#3b82f6", pointBorderColor: "#ffffff",
+                pointBorderWidth: 1.5, pointRadius: 3.5, pointHoverRadius: 6,
+                borderWidth: 3, tension: 0, spanGaps: true, hidden: false,
+                yAxisID: twoY ? "y2" : "y",
+              },
+            ]
+          : [])
+      ],
+    },
+
+    options: {
+      responsive: true, animation: false, normalized: true, maintainAspectRatio: false,
+      elements: { point: { hitRadius: 2 } },
+      interaction: { mode: "point", intersect: true },
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false, external: externalHtmlTooltip },
+        zoom: {
+          limits: {
+            x: {
+              min: Number.isFinite(minX) ? minX : undefined,
+              max: Number.isFinite(maxX) ? maxX : undefined,
+              minRange: 100 * 60 * 1000,
+            },
+          },
+          pan: { enabled: false },
+          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, drag: { enabled: false }, mode: "x" },
+        },
+      },
+      scales: {
+  x: {
+    type: "time",
+    time: { unit: gridTime.unit, stepSize: gridTime.step, tooltipFormat: "yyyy-MM-dd HH:mm" },
+    min: viewMin ?? undefined, max: viewMax ?? undefined,
+    grid: {
+      color: document.body.classList.contains("theme-dark") ? "rgba(255,255,255,.12)" : "rgba(0,0,0,.06)",
+      lineWidth: 1, drawBorder: true,
+      borderColor: document.body.classList.contains("theme-dark") ? "rgba(255,255,255,.22)" : "#dee2e6",
+      borderDash: [4, 4],
+    },
+    ticks: {
+      color: document.body.classList.contains("theme-dark") ? "#ced4da" : "#6c757d",
+      maxTicksLimit: gridTime.unit === "day" ? 8 : Math.floor(24 / gridTime.step) + 1,
+      // если нужно — тоже можно увеличить:
+      // font: { size: 12, weight: '600' }
+    },
+  },
+
+  y: {
+    beginAtZero: chkZero.checked, min: b1.min, max: b1.max,
+    grid: {
+      color: document.body.classList.contains("theme-dark") ? "rgba(255,255,255,.12)" : "rgba(0,0,0,.06)",
+      lineWidth: 2, drawBorder: true,
+      borderColor: document.body.classList.contains("theme-dark") ? "rgba(255,255,255,.22)" : "#dee2e6",
+      borderDash: [4, 4],
+    },
+    ticks: {
+      color: document.body.classList.contains("theme-dark") ? "#ced4da" : "#6c757d",
+      stepSize: 2,
+      font: { size: 13, weight: '600' }            // подписи делений слева крупнее/жирнее
+    },
+    title: {
+      display: true,
+      text: `${meta.basePTI}: ${meta.p1}${UNITS[meta.p1] ? ", " + UNITS[meta.p1] : ""}`,
+      color: "#ef4444",
+      font: { size: 16, weight: '700' },           // заголовок слева крупнее/жирнее
+      padding: 10                                   // отступ от оси
+    },
+  },
+
+  y2: {
+    display: twoY, position: "right",
+    beginAtZero: chkZero.checked, min: b2.min, max: b2.max,
+    grid: {
+      drawOnChartArea: false,
+      color: document.body.classList.contains("theme-dark") ? "rgba(255,255,255,.12)" : "rgba(0,0,0,.06)",
+      borderColor: document.body.classList.contains("theme-dark") ? "rgba(255,255,255,.22)" : "#dee2e6",
+      borderDash: [4, 4],
+    },
+    ticks: {
+      color: document.body.classList.contains("theme-dark") ? "#ced4da" : "#6c757d",
+      stepSize: 2,
+      font: { size: 13, weight: '600' }            // подписи делений справа
+    },
+    title: {
+      display: twoY,
+      text: `${meta.comparePTI}: ${meta.p2}${UNITS[meta.p2] ? ", " + UNITS[meta.p2] : ""}`,
+      color: "#3b82f6",
+      font: { size: 16, weight: '700' },           // заголовок справа
+      padding: 10
+    },
+  },
+},
+
+    },
+  }); // <-- закрыл new Chart
+
+  attachManualPan(chart, minX, maxX);
+  chart.resize();
+}
+
+
+
+
+    function attachManualPan(chart, limMin, limMax){
+      const canvas=chart.canvas; const rectOf=()=>canvas.getBoundingClientRect(); const scale=chart.scales.x;
+      const state={active:false,startPx:0,startMin:0,startMax:0,span:0}; const toLocalX=(e)=>e.clientX-rectOf().left;
+      function onDown(e){ if(e.button!==0) return; state.active=true; canvas.classList.add('is-panning'); state.startPx=toLocalX(e); state.startMin=scale.min; state.startMax=scale.max; state.span=scale.max-scale.min; chart.update('none'); window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp, {once:true}); }
+      function onMove(e){ if(!state.active) return; const curPx=toLocalX(e); const startVal=scale.getValueForPixel(state.startPx); const curVal=scale.getValueForPixel(curPx); const shift=startVal-curVal; let newMin=state.startMin+shift; let newMax=state.startMax+shift; if(Number.isFinite(limMin) && newMin<limMin){ newMin=limMin; newMax=limMin+state.span; } if(Number.isFinite(limMax) && newMax>limMax){ newMax=limMax; newMin=limMax-state.span; } chart.options.scales.x.min=newMin; chart.options.scales.x.max=newMax; chart.update('none'); }
+      function onUp(){ state.active=false; canvas.classList.remove('is-panning'); chart.update('none'); window.removeEventListener('mousemove', onMove); }
+      canvas.onmousedown=null; canvas.addEventListener('mousedown', onDown);
+    }
+
+    /* ====== Привязки UI ====== */
+    $('btn-refresh').onclick = draw;
+    selObj.onchange = () => {
+      if (isObjectLocked) {
+       // базовый объект (красная линия) фиксирован -> перерисуем только сравнение
+        draw();
+      } else {
+        // обычный режим: смена объекта меняет базовую серию
+        currentPTI = selObj.value;
+        updateLovati();
+        draw();
+      }
+    };
+
+
+
+    selParam2.onchange = draw; selTip.onchange = draw; chk2Y.onchange = draw;
+    chkZero.onchange = () => {
+  if (chart) {
+    chart.options.scales.y.beginAtZero = chkZero.checked;
+    if (chart.options.scales.y2) {
+      chart.options.scales.y2.beginAtZero = chkZero.checked;
+    }
+    chart.update();
+  }
+};
+
+
+
+    chkAuto.onchange = () => { if (chkAuto.checked){ if(autoTimer) clearInterval(autoTimer); autoTimer=setInterval(draw,60000); } else { if(autoTimer) clearInterval(autoTimer); autoTimer=null; } };
+
+    /* ====== Сайдбар: показать/скрыть + ресайз ====== */
+    const leftPanel=$('left-panel'); const rightContent=$('right-content'); const hideBtn=$('hide-btn'); const showBtn=$('show-btn'); const resizer=$('left-panel-resizer');
+    function updateShowBtnTop(){
+      const navH=document.querySelector('.navbar').offsetHeight;
+      showBtn.style.top = navH + 'px';
+      document.documentElement.style.setProperty('--navH', navH + 'px');
+    }
+    window.addEventListener('resize', updateShowBtnTop); updateShowBtnTop();
+
+    hideBtn.addEventListener('click', ()=>{
+      leftPanel.classList.add('hidden'); rightContent.classList.add('content-shifted'); showBtn.style.display='block'; resizer.style.display='none'; requestAnimationFrame(()=>{ chart?.resize(); chart?.update('none'); });
+      hideBtn.setAttribute('aria-expanded','false'); showBtn.setAttribute('aria-expanded','false');
+    });
+    showBtn.addEventListener('click', ()=>{
+      leftPanel.classList.remove('hidden'); rightContent.classList.remove('content-shifted'); showBtn.style.display='none'; resizer.style.display='block'; requestAnimationFrame(()=>{ chart?.resize(); chart?.update('none'); });
+      hideBtn.setAttribute('aria-expanded','true'); showBtn.setAttribute('aria-expanded','true');
+    });
+
+    let isResizing=false, startX=0, startWidth=0; const MIN_W=150, MAX_W=600;
+    resizer.addEventListener('mousedown', (e)=>{
+      if(leftPanel.classList.contains('hidden')) return; isResizing=true; startX=e.clientX; startWidth=leftPanel.offsetWidth; document.body.style.userSelect='none';
+    });
+    window.addEventListener('mousemove', (e)=>{
+      if(!isResizing) return; let newW = startWidth + (e.clientX - startX); newW = Math.max(MIN_W, Math.min(newW, MAX_W)); leftPanel.style.width = newW + 'px'; updateShowBtnTop(); chart?.resize(); chart?.update('none');
+    });
+    window.addEventListener('mouseup', ()=>{ if(isResizing){ isResizing=false; document.body.style.userSelect=''; } });
+
+    new ResizeObserver(()=>{ if(chart){ chart.resize(); chart.update('none'); } }).observe(document.querySelector('.chart-wrap'));
+
+    /* ====== Инициализация из query до первого draw ====== */
+    function fire(el){ if(!el) return; el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+    function waitForOptions(selectEl, tries=60){
+      return new Promise(resolve=>{
+        if(selectEl && selectEl.options.length) return resolve();
+        const iv=setInterval(()=>{
+          if(selectEl && selectEl.options.length){ clearInterval(iv); resolve(); }
+          if(--tries<=0){ clearInterval(iv); resolve(); }
+        },50);
+      });
+    }
+    async function applyInitFromQuery(){
+  const sp = new URLSearchParams(location.search);
+  const init = {
+    pti: sp.get('pti'),
+    param:(sp.get('param')||'').toUpperCase(),
+    from:sp.get('from'),
+    to:sp.get('to'),
+    agg:sp.get('agg'),
+    param2:(sp.get('param2')||'').toUpperCase(),
+    twoY: sp.get('twoY')
+  };
+
+  // II parametru (второй параметр)
+  if (init.param2){
+    const opt=[...selParam2.options].find(o=>(o.value||'').toUpperCase()===init.param2);
+    if(opt){ selParam2.value=opt.value; }
+  }
+
+  // Если есть pti в URL — фиксируем базовый объект (красную линию)
+  if (init.pti){
+    await waitForOptions(selObj);
+    const opt=[...selObj.options].find(o=>o.value===String(init.pti));
+    if(opt){ selObj.value=opt.value; }
+    lockedPTI = String(init.pti);
+    currentPTI = lockedPTI;      // храним также для совместимости со старым кодом
+    isObjectLocked = true;       // селект НЕ блокируем, он для сравнения
+    selObj.title = 'Select for comparison';
+  } else {
+    lockedPTI = null;            // нет фиксации — обычный режим
+    isObjectLocked = false;
+    selObj.title = '';
+  }
+
+  // Даты/время
+  function setDatePair(dateId,timeId,iso){
+    if(!iso) return;
+    const [d,t]=iso.split('T'); const di=$(dateId), ti=$(timeId);
+    if(di&&d) di.value=d;
+    if(ti&&t) ti.value=t.slice(0,5);
+  }
+  setDatePair('date-from','time-from', init.from);
+  setDatePair('date-to','time-to',   init.to);
+
+  // Аггрегация и 2 оси
+  selTip.value = (init.agg ? normAgg(init.agg) : 'detaliat');
+  if (init.twoY && /^(1|true|y|yes)$/i.test(init.twoY)) { chk2Y.checked = true; }
+
+  // триггеры
+  const fire = (el)=>el&&(el.dispatchEvent(new Event('input',{bubbles:true})),
+                          el.dispatchEvent(new Event('change',{bubbles:true})));
+  fire(selParam2); fire(selTip); fire(chk2Y);
+}
+
+
+
+    /* ====== Старт ====== */
+    (async function start(){
+      await loadObjects();
+      await applyInitFromQuery();  // важно до первого draw
+      await updateLovati();
+      await draw();
+    })();
+</script>
+</body>
+</html>

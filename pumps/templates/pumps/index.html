@@ -1,0 +1,696 @@
+{% load static %}
+
+<!doctype html>
+<html lang="ro">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Monitoring Pompe</title>
+
+    <style>
+        :root{
+            --bg:#f8f9fa;          /* фон страницы как у графика (light) */
+            --text:#212529;
+            --muted:#6b7280;
+            --line:#dee2e6;
+
+            --nav-bg:#7291bf;      /* navbar как у графика (light) */
+
+            --g:#35d21b;
+            --r:#d21b1b;
+            --y:#f0c419;
+            --gr:#bdbdbd;
+        }
+
+        body.dark{
+            --bg:#495057;          /* фон страницы как у графика (dark) */
+            --text:#f8f9fa;
+            --muted:#9ca3af;
+            --line:#495057;
+
+            --nav-bg:#343a40;      /* navbar как у графика (dark) */
+        }
+
+        body{
+          font-family: Arial, sans-serif;
+          padding: 12px 14px;
+          background: var(--bg);
+          color: var(--text);
+          font-size: 15px;
+        }
+
+        /* ===== Toolbar ===== */
+        .toolbar{
+            position: relative;
+            display:flex;
+            justify-content: center; /* T2 по центру */
+            align-items:center;
+            gap:12px;
+            margin: 6px 0 12px;
+        }
+
+        .toolbar label{
+          display:flex;
+          align-items:center;
+          gap:6px;
+          font-size: 14px;
+        }
+
+        input[type="number"]{
+          height: 26px;
+          width: 80px;
+          padding: 0 6px;
+          border:1px solid var(--line);
+          border-radius: 6px;
+          font-size: 14px;
+          outline:none;
+          text-align:center;
+          background: var(--bg);
+          color: var(--text);
+        }
+
+        /* кнопка темы */
+        #themeBtn{
+            position: absolute;
+            right: 0;          /* 👉 в самый правый край */
+            height:26px;
+            padding:0 10px;
+            border-radius:6px;
+            border:1px solid var(--line);
+            background:var(--bg);
+            color:var(--text);
+            cursor:pointer;
+        }
+        #themeBtn:hover{
+          background: rgba(0,0,0,0.05);
+        }
+        body.dark #themeBtn:hover{
+          background: rgba(255,255,255,0.08);
+        }
+
+        /* ===== Grid ===== */
+        .grid{
+          display:grid;
+          gap: 2px;
+          grid-template-columns: repeat(4, minmax(220px, 1fr));
+          align-items:start;
+        }
+        @media (max-width: 1200px){
+          .grid{ grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+        }
+        @media (max-width: 700px){
+          .grid{ grid-template-columns: 1fr; }
+        }
+
+        .card{
+            border: 1px solid transparent;
+            border-radius: 12px;
+            padding: 6px 6px 5px;
+            background: var(--bg);
+            box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+        }
+
+        /* ===== Цветные карточки (день) ===== */
+        .grid > .card:nth-child(1){
+          background: #f8fbff;
+          border-color: #dbeafe;
+        }
+        .grid > .card:nth-child(2){
+          background: #f9fff8;
+          border-color: #dcfce7;
+        }
+        .grid > .card:nth-child(3){
+          background: #fffaf5;
+          border-color: #ffedd5;
+        }
+        .grid > .card:nth-child(4){
+          background: #fff8fb;
+          border-color: #fce7f3;
+        }
+
+        /* ===== Цветные карточки (ночь) ===== */
+        body.dark .grid > .card:nth-child(1){
+            background: #0f1a2b;
+            border-color: #1e3a8a;
+        }
+        body.dark .grid > .card:nth-child(2){
+            background: #0f2418;
+            border-color: #166534;
+        }
+        body.dark .grid > .card:nth-child(3){
+            background: #0f1a2b;
+            border-color: #1e3a8a;
+        }
+        body.dark .grid > .card:nth-child(4){
+            background: #0f2418;
+            border-color: #166534;
+        }
+
+        .head{
+          display:grid;
+          grid-template-columns: 72px 60px 64px 64px;
+          gap: 8px;
+          padding: 4px 6px 6px;
+          font-size: 13px;
+          font-weight: 800;
+          border-bottom: 1px solid var(--line);
+          margin-bottom: 6px;
+        }
+        .head > div:nth-child(3),
+        .head > div:nth-child(4){
+          text-align:right; /* заголовки как есть */
+        }
+
+        .row{
+          display:grid;
+          grid-template-columns: 72px 60px 64px 64px;
+          gap: 8px;
+          align-items:center;
+          padding: 4px 6px;
+          border-radius: 8px;
+        }
+        .row:hover{ background: rgba(0,0,0,0.05); }
+        body.dark .row:hover{ background: rgba(255,255,255,0.06); }
+
+        .pumps{
+          display:flex;
+          align-items:center;
+          gap: 4px;
+          min-height: 18px;
+          width:80px;
+        }
+        .sq{
+          width: 24px;
+          height: 24px;
+          display:inline-block;
+          border:1px solid #222;
+          border-radius: 2px;
+          background: var(--gr);
+        }
+        .sq.g{ background: var(--g); }
+        .sq.r{ background: var(--r); }
+        .sq.y{ background: var(--y); }
+        .sq.gr{ background: var(--gr); }
+
+        /* ===== armed (ПКМ: квадрат -> круг) ===== */
+        .sq.armed{
+          border-radius: 50% !important;
+          box-shadow: 0 0 0 2px rgba(255,255,255,.45) inset;
+        }
+        body.dark .sq.armed{
+          box-shadow: 0 0 0 2px rgba(255,255,255,.35) inset;
+        }
+
+        .ptc{
+          font-weight: 800;
+          font-size: 15px;
+        }
+
+        /* значения T2/Q должны ровно стать под заголовками */
+        .val{
+          font-size: 15px;
+          text-align:right;            /* важно: как у заголовков */
+          justify-self:end;            /* важно для grid */
+          font-variant-numeric: tabular-nums;
+        }
+        .val a{
+          display:block;               /* чтобы не было микросдвигов */
+          text-align: inherit;
+        }
+
+        .t2-alert{
+          color: var(--r);
+          font-weight: 900;
+        }
+
+        a{
+          color: inherit;
+          text-decoration:none;
+        }
+        a:hover{ text-decoration: underline; }
+
+        /* 2-я карточка: больше места для 3-х квадратов */
+        .grid > .card:nth-child(2) .head{
+          grid-template-columns: 84px 60px 64px 64px;
+        }
+        .grid > .card:nth-child(2) .row{
+          grid-template-columns: 84px 60px 64px 64px;
+        }
+        .grid > .card:nth-child(2) .pumps{
+          width:84px;
+        }
+
+        /* ===== КНОПКА ТЕМЫ (bootstrap-like) ===== */
+        .btn-theme{
+            position: absolute;
+            right: 0;
+            height:26px;
+            padding: 0 10px;
+            border-radius: 6px;
+            background: transparent;
+            border: 1px solid var(--line);
+            color: var(--text);
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .btn-theme:hover{
+            background: rgba(0,0,0,0.06);
+        }
+        body.dark .btn-theme:hover{
+            background: rgba(255,255,255,0.08);
+        }
+
+        .toolbar{
+            position: relative;
+            display:flex;
+            align-items:center;
+            margin: 6px 0 12px;
+        }
+
+        /* центр экрана */
+        .t2-controls{
+            margin: 0 auto;
+            display:flex;
+            gap:12px;
+        }
+
+        /* кнопка темы справа */
+        .btn-theme{
+            position: absolute;
+            right: 0;
+            height:26px;
+            padding:0 10px;
+            border-radius:6px;
+            border:1px solid var(--line);
+            background:transparent;
+            color:var(--text);
+            cursor:pointer;
+            font-size:13px;
+        }
+        .btn-theme:hover{
+            background: rgba(0,0,0,0.06);
+        }
+        body.dark .btn-theme:hover{
+            background: rgba(255,255,255,0.08);
+        }
+
+        /* ===== TOP BAR (как navbar у графика) ===== */
+        .toolbar{
+            background: var(--nav-bg);
+            padding: 10px 12px;
+            border-radius: 10px;
+            margin: 6px 0 12px;        /* оставляем твои отступы логически такими же */
+        }
+
+        /* Текст в верхней панели белый, как в графике */
+        .toolbar,
+        .toolbar label{
+            color: rgba(255,255,255,.90);
+        }
+
+        /* Поля T2 min/max читаемые на цветной шапке */
+        .toolbar input[type="number"]{
+            background:#ffffff;
+            color:#111;
+            border:1px solid rgba(255,255,255,.55);
+        }
+        body.dark .toolbar input[type="number"]{
+            background:#212529;
+            color:#f8f9fa;
+            border:1px solid rgba(255,255,255,.25);
+        }
+
+        /* ===== SCADA Portal как в графике (outline-light) ===== */
+        .btn{
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            gap:.25rem;
+            text-decoration:none;
+            cursor:pointer;
+            user-select:none;
+            white-space:nowrap;
+        }
+
+        .btn-sm{
+            height:26px;
+            padding:0 10px;
+            border-radius:6px;
+            font-size:13px;
+            line-height:1;
+        }
+
+        .btn-outline-light{
+            color:#fff;
+            background:transparent;
+            border:1px solid rgba(255,255,255,.85);
+        }
+
+        .btn-outline-light:hover{
+            background:#fff;
+            color:#111;
+            text-decoration:none;
+        }
+
+        /* ===== Кнопка темы справа — тоже как outline-light ===== */
+        .btn-theme{
+            border:1px solid rgba(255,255,255,.85) !important;
+            color:#fff !important;
+            background:transparent !important;
+        }
+
+        .btn-theme:hover{
+            background: rgba(255,255,255,0.15) !important;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="toolbar">
+
+    <!-- СЛЕВА: SCADA Portal -->
+    <div class="left-tools d-flex align-items-center gap-2">
+        <a href="http://10.1.1.248:1010/"
+           class="btn btn-outline-light btn-sm"
+           target="_blank"
+           rel="noopener">
+            SCADA Portal
+        </a>
+    </div>
+
+    <!-- ЦЕНТР: T2 min / max -->
+    <div class="t2-controls">
+        <label>T2 min <input id="t2min" type="number" value="10"></label>
+        <label>T2 max <input id="t2max" type="number" value="55"></label>
+    </div>
+
+    <!-- СПРАВА: тема -->
+    <button id="btn-theme" class="btn-theme" title="Temă">☀️/🌙</button>
+
+</div>
+
+<div class="grid" id="grid"></div>
+
+<!-- Alarm audio (loop). В Django /static/sonor.mp3 должен отдаваться через STATIC_URL -->
+<audio id="alarm-audio" preload="auto" loop src="{% static 'sonor.wav' %}"></audio>
+
+
+<script>
+    const grid = document.getElementById("grid");
+    const t2minEl = document.getElementById("t2min");
+    const t2maxEl = document.getElementById("t2max");
+    const themeBtn = document.getElementById("btn-theme");
+
+    // ===== Persist armed state (как во втором приложении) =====
+    const LS_ARMED = 'ui.pumps.armed';
+
+    function loadArmedFromLS(){
+      try{
+        const arr = JSON.parse(localStorage.getItem(LS_ARMED) || '[]');
+        return new Set(Array.isArray(arr) ? arr : []);
+      }catch{
+        return new Set();
+      }
+    }
+
+    function saveArmedToLS(set){
+      try{
+        localStorage.setItem(LS_ARMED, JSON.stringify([...set]));
+      }catch{}
+    }
+
+    const armedPumpKeys = loadArmedFromLS();
+
+    function pumpKey(ptc, pidx){
+      return `${String(ptc ?? 'unknown')}:${String(pidx ?? '0')}`;
+    }
+
+    // ===== ALARM: как во 2-м приложении (старт ТОЛЬКО от ПКМ по красному) =====
+    const alarmAudio = document.getElementById('alarm-audio');
+    alarmAudio.volume = 0.8;
+
+    let alarmPlaying = false;
+
+    function hasAnyArmedRed(){
+      // проверяем DOM: есть ли хоть один насос armed + красный
+      return !!document.querySelector('.sq.armed.r');
+    }
+
+    function startAlarm(){
+      if (alarmPlaying) return;
+      alarmAudio.play().then(() => {
+        alarmPlaying = true;
+      }).catch(() => {
+        // ПКМ — это user gesture, обычно play() разрешён.
+      });
+    }
+
+    function stopAlarm(){
+      if (!alarmPlaying) return;
+      alarmAudio.pause();
+      alarmAudio.currentTime = 0;
+      alarmPlaying = false;
+    }
+
+    // ---- theme toggle ----
+    themeBtn.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      themeBtn.textContent = document.body.classList.contains("dark") ? "☀️" : "🌙";
+    });
+
+    let timerId = null;
+    let inFlight = false;
+    let lastData = [];
+
+    // ===== ОКРУГЛЕНИЕ ДЛЯ ОТОБРАЖЕНИЯ =====
+    function roundInt(x){
+      const n = Number(x);
+      if (Number.isNaN(n)) return String(x ?? "");
+      return String(Math.round(n));   // T2 -> целое
+    }
+
+    function round2(x){
+      const n = Number(x);
+      if (Number.isNaN(n)) return String(x ?? "");
+      return n.toFixed(2);            // Q -> 2 знака
+    }
+
+    function pumpSquareColor(v, isDigital01, lcs){
+      if (isDigital01){
+        if (v === 0) return "g";
+        if (v === 1) return "r";
+        return "gr";
+      } else {
+        if (lcs !== null && lcs < 30) return "y";
+        if (v > 200) return "r";
+        if (v > 0) return "g";
+        return "gr";
+      }
+    }
+
+    function makeLink(nodeOrText, url){
+      if (!url){
+        if (typeof nodeOrText === "string") return document.createTextNode(nodeOrText);
+        if (nodeOrText instanceof Node) return nodeOrText;
+        return document.createTextNode(String(nodeOrText ?? ""));
+      }
+      const a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      if (typeof nodeOrText === "string") a.textContent = nodeOrText;
+      else a.appendChild(nodeOrText);
+      return a;
+    }
+
+    function pumpUrlByNum(row, n){
+      if (n === 1) return row.url_pompa || null;
+      if (n === 2) return row.url_pompa2 || null;
+      if (n === 3) return row.url_pompa3 || null;
+      return null;
+    }
+
+    function districtLabel(){ return ""; }
+
+    function districtKeyFromPtc(ptc){
+      const s = String(ptc ?? "").trim();
+      if (!s) return null;
+      const first = s[0];
+      if (first === "1") return "2";
+      if (first === "2" || first === "3" || first === "4" || first === "5") return first;
+      return null;
+    }
+
+    function sortByPtcAsc(a, b){
+      const aa = parseInt(String(a.ptc ?? "0"), 10);
+      const bb = parseInt(String(b.ptc ?? "0"), 10);
+      if (Number.isNaN(aa) && Number.isNaN(bb)) return 0;
+      if (Number.isNaN(aa)) return 1;
+      if (Number.isNaN(bb)) return -1;
+      return aa - bb;
+    }
+
+    function buildCard(title, rows){
+      const card = document.createElement("div");
+      card.className = "card";
+
+      const head = document.createElement("div");
+      head.className = "head";
+      head.innerHTML = `<div>Pompe</div><div>PTC</div><div>T2,°C</div><div>Q,Gcal</div>`;
+      card.appendChild(head);
+
+      const t2min = Number(t2minEl.value);
+      const t2max = Number(t2maxEl.value);
+
+      for (const r of rows){
+        const rowEl = document.createElement("div");
+        rowEl.className = "row";
+
+        const pumpsWrap = document.createElement("div");
+        pumpsWrap.className = "pumps";
+
+        const pumps = r.pompa || [];
+        const nums  = r.pompa_nums || [];
+        const isDigital01 = pumps.length > 0 && pumps.every(v => v === 0 || v === 1);
+        const lcs = (r.lcs === null || r.lcs === undefined) ? null : Number(r.lcs);
+
+        // ===== Поведение насосов (ПКМ: armed) + ALARM (как во 2-м приложении) =====
+        for (let i = 0; i < pumps.length; i++){
+          const v = Number(pumps[i]);
+          const num = nums[i] ?? null;
+
+          const pidx = (num != null) ? Number(num) : (i + 1);
+
+          // LOVATI: в режиме 0/1 рисуем только 0 или 1 (как во втором приложении)
+          if (isDigital01 && !(v === 0 || v === 1)) {
+            continue;
+          }
+
+          const sq = document.createElement("span");
+          sq.className = "sq " + pumpSquareColor(v, isDigital01, lcs);
+
+          // ключ насоса = PTC + номер насоса
+          const key = pumpKey(r.ptc, pidx);
+
+          // применяем armed из localStorage
+          if (armedPumpKeys.has(key)) {
+            sq.classList.add('armed');
+          }
+
+          // ПКМ: toggle armed и сохранение + звук (старт только от ПКМ по красному)
+          sq.oncontextmenu = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const wasArmed = sq.classList.contains('armed');
+
+            if (wasArmed) {
+              // разоружаем
+              sq.classList.remove('armed');
+              armedPumpKeys.delete(key);
+              saveArmedToLS(armedPumpKeys);
+
+              // если после разоружения больше нет armed+красных — выключаем звук
+              if (!hasAnyArmedRed()) stopAlarm();
+
+            } else {
+              // вооружаем
+              sq.classList.add('armed');
+              armedPumpKeys.add(key);
+              saveArmedToLS(armedPumpKeys);
+
+              // звук запускается ТОЛЬКО если в момент ПКМ квадрат красный
+              if (sq.classList.contains('r')) startAlarm();
+            }
+
+            return false;
+          };
+
+          const url = num ? pumpUrlByNum(r, Number(num)) : null;
+          pumpsWrap.appendChild(makeLink(sq, url));
+        }
+
+        const ptcEl = document.createElement("div");
+        ptcEl.className = "ptc";
+        ptcEl.appendChild(makeLink(String(r.ptc ?? ""), r.url_ptc));
+
+        const t2El = document.createElement("div");
+        t2El.className = "val";
+        t2El.appendChild(makeLink(roundInt(r.t2), r.url_t2)); // T2 -> целое
+
+        const t2val = Number(r.t2);
+        if (!Number.isNaN(t2val) && !Number.isNaN(t2min) && !Number.isNaN(t2max)) {
+          if (t2val < t2min || t2val > t2max) t2El.classList.add("t2-alert");
+        }
+
+        const qEl = document.createElement("div");
+        qEl.className = "val";
+        qEl.appendChild(makeLink(round2(r.q1), r.url_q1));    // Q -> 2 знака
+
+        rowEl.appendChild(pumpsWrap);
+        rowEl.appendChild(ptcEl);
+        rowEl.appendChild(t2El);
+        rowEl.appendChild(qEl);
+        card.appendChild(rowEl);
+      }
+      return card;
+    }
+
+    function render(data){
+      grid.innerHTML = "";
+      const buckets = { "2": [], "3": [], "4": [], "5": [] };
+
+      for (const r of data){
+        const k = districtKeyFromPtc(r.ptc);
+        if (!k) continue;
+        buckets[k].push(r);
+      }
+
+      for (const k of Object.keys(buckets)){
+        buckets[k].sort(sortByPtcAsc);
+      }
+
+      const order = ["2","3","4","5"];
+      for (const k of order){
+        grid.appendChild(buildCard("", buckets[k]));
+      }
+
+      // Важно: мы НЕ включаем звук сами при render().
+      // Старт только от ПКМ по красному (как во втором приложении).
+      // Но если данных обновились и красных armed больше нет — выключим звук.
+      if (!hasAnyArmedRed()) stopAlarm();
+    }
+
+    async function load(){
+      if (inFlight) return;
+      inFlight = true;
+      try{
+        const url = new URL("/pumps/api/table/", window.location.origin);
+        if (t2minEl.value !== "") url.searchParams.set("t2_min", t2minEl.value);
+        if (t2maxEl.value !== "") url.searchParams.set("t2_max", t2maxEl.value);
+        const res = await fetch(url.toString(), { credentials: "same-origin", cache: "no-store" });
+        const data = await res.json();
+        lastData = Array.isArray(data) ? data : [];
+        render(lastData);
+      } catch(e){
+        console.error("Load error:", e);
+      } finally {
+        inFlight = false;
+      }
+    }
+
+    function startAuto(){
+      if (timerId) clearInterval(timerId);
+      timerId = setInterval(load, 30000);
+    }
+
+    t2minEl.addEventListener("input", load);
+    t2maxEl.addEventListener("input", load);
+
+    load();
+    startAuto();
+</script>
+
+</body>
+</html>

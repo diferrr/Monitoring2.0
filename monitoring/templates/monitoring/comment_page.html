@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <title>Comentarii — {{ ptc }}</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            background: #fafbff;
+            margin: 30px;
+        }
+
+        h1 {
+            color: #222;
+            font-size: 22px;
+        }
+
+        h2 {
+            color: #444;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        button {
+            background: #4e73ff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 6px;
+            padding: 6px 14px;
+            font-size: 14px;
+            margin-top: 6px;
+        }
+
+        button:hover {
+            background: #395bdb;
+        }
+
+        .comment {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        .comment .time {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .comment .text {
+            margin-top: 6px;
+            white-space: pre-wrap;
+        }
+
+        .comment .actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-delete {
+            background: #e03131;
+        }
+
+        .btn-delete:hover {
+            background: #c92a2a;
+        }
+
+        .note {
+            color: #888;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+
+        a {
+            color: #1f3aed;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+<h1>PTC {{ ptc }}</h1>
+
+
+<h2>Comentariu</h2>
+<form method="post">
+    {% csrf_token %}
+    <textarea name="text" placeholder="Scrieți comentariul aici..." required></textarea>
+    <input type="hidden" name="action" value="add">
+    <button type="submit">Salvare</button>
+</form>
+
+
+<h2>Comentarii existente</h2>
+{% if comments %}
+{# We show newest first but keep correct indices for delete by using revcounter0 #}
+{% for c in comments reversed %}
+<div class="comment">
+    <div class="time">{{ c.ts }}</div>
+    <div class="text">{{ c.text }}</div>
+    <div class="actions">
+        <form method="post" style="display:inline">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="index" value="{{ forloop.revcounter0 }}">
+            <button type="submit" class="btn-delete">Șterge</button>
+        </form>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<p class="note">Nu există comentarii pentru acest PTC.</p>
+{% endif %}
+
+
+<p><a href="javascript:history.back()">← Înapoi</a></p>
+</body>
+</html>

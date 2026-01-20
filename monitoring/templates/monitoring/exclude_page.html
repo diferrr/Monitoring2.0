@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <title>Excluderi — {{ ptc }}</title>
+    <style>
+        body {
+          font-family: system-ui, sans-serif;
+          background: #fafbff;
+          margin: 30px;
+        }
+        h1 { color: #222; font-size: 22px; }
+        h2 { color: #444; font-size: 16px; margin-top: 20px; }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 12px;
+          background: #fff;
+        }
+        th, td {
+          border: 1px solid #ddd;
+          padding: 6px 10px;
+          text-align: left;
+          font-size: 14px;
+        }
+        th {
+          background: #f0f3ff;
+          color: #1c266d;
+        }
+        input, select, textarea, button {
+          padding: 6px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          font-size: 14px;
+        }
+        button {
+          background: #4e73ff;
+          color: white;
+          border: none;
+          cursor: pointer;
+          border-radius: 6px;
+          padding: 6px 14px;
+        }
+        button:hover {
+          background: #395bdb;
+        }
+        .inline { display: inline-block; margin-right: 8px; }
+        .note { color: #888; margin-top: 10px; font-size: 13px; }
+    </style>
+</head>
+<body>
+<h1>PTC {{ ptc }} — Excluderi</h1>
+
+<h2>Adaugă excludere</h2>
+<form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="add">
+    <div class="inline">
+        <label>Parametru:</label>
+        <select name="param" required>
+            {% for p in params %}
+            <option value="{{ p }}">{{ p }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <!-- Fields to specify the start and end of exclusion period -->
+    <div class="inline">
+        <label>De la:</label>
+        <!-- Start of the exclusion period; using datetime-local to allow date and time -->
+        <input type="datetime-local" name="start" required>
+    </div>
+    <div class="inline">
+        <label>Până la:</label>
+        <!-- End of the exclusion period; using datetime-local and no default value -->
+        <input type="datetime-local" name="end" required>
+    </div>
+
+    <div class="inline">
+        <label>Tură:</label>
+        <select name="tura">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+        </select>
+    </div>
+    <div class="inline">
+        <label>Cauza:</label>
+        <input type="text" name="reason">
+    </div>
+    <button type="submit">Adaugă</button>
+</form>
+
+<h2>Parametri excluși</h2>
+{% if exclusions %}
+<table>
+    <tr>
+        <th>#</th>
+        <th>Parametru</th>
+        <th>De la</th>
+        <th>Până la</th>
+        <th>Tură</th>
+        <th>Cauza</th>
+        <th>Timp adăugare</th>
+        <th>Șterge</th>
+    </tr>
+    {% for e in exclusions %}
+    <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ e.param }}</td>
+        <td>{{ e.start|default:'' }}</td>
+        <td>{{ e.end|default:e.until }}</td>
+        <td>{{ e.tura }}</td>
+        <td>{{ e.reason }}</td>
+        <td>{{ e.ts }}</td>
+        <td>
+            <form method="post" style="display:inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="index" value="{{ forloop.counter0 }}">
+                <button type="submit">×</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p class="note">Nu există parametri excluși pentru acest PTC.</p>
+{% endif %}
+
+<p><a href="javascript:history.back()">← Înapoi</a></p>
+</body>
+</html>
