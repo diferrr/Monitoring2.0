@@ -32,7 +32,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     "monitoring",
-
+    "mapapp",
     "pumps",
     'rest_framework',
     'monitoring_PTC.charts',
