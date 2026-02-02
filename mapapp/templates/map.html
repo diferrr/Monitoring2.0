@@ -7,1002 +7,863 @@
     <title>TERMOELECTRICA S.A.</title>
 
     <!-- Leaflet & MarkerCluster CSS -->
-    <link
-            href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
-            rel="stylesheet"
-    />
-    <link
-            href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"
-            rel="stylesheet"
-    />
-    <link
-            href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"
-            rel="stylesheet"
-    />
+    <link href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" rel="stylesheet"/>
+    <link href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" rel="stylesheet"/>
+    <link href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" rel="stylesheet"/>
 
-    <!-- JQuery & Leaflet JS -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
 
-    {% load static %}
     <script src="{% static 'sectors.js' %}"></script>
 
     <style>
-        body {
-     font-family: Arial, sans-serif;
-     text-align: center;
-     background-color: #f4f4f4;
-     margin: 0;
-     padding: 0;
- }
- .header {
-     display: flex;
-     justify-content: space-between;
-     align-items: center;
-     width: 100vw;
-     max-width: none;
-     margin: 0;
-     position: fixed;
-     top: 0;
-     left: 0;
-     z-index: 10;
-     background: rgba(244, 244, 244, 0.98);
-     padding: 18px 0 5px 0;
- }
- h1 {
-     color: #2c3e50;
-     margin: 0;
-     text-align: left;
-     padding-left: 30px;
- }
- #search-container {
-     position: absolute;
-     top: 22px;
-     right: 40px;
-     z-index: 11;
-     text-align: right;
- }
- #sector-buttons {
-     display: flex;
-     justify-content: center;
-     gap: 15px;
-     flex-wrap: wrap;
-     margin: 0;
-     position: fixed;
-     top: 70px; /* ниже шапки */
-     left: 0;
-     width: 100vw;
-     z-index: 10;
-     background: none;
- }
- #map {
-     position: fixed;
-     top: 0;
-     left: 0;
-     right: 0;
-     bottom: 0;
-     width: 100vw;
-     height: 100vh;
-     z-index: 1;
-     border: none;
-     border-radius: 0;
-     box-shadow: none;
-     margin: 0;
-     max-width: none;
- }
- #limits-box, #limits-tooltip, #status-filter, #status-list {
-     position: fixed;
-     z-index: 12;
- }
- #limits-box {
-     top: 110px;
-     left: 20px;
-     width: 35px;
-     height: 35px;
-     font-size: 23px;
-     background-color: #32d74b;
-     color: #fff;
-     font-weight: bold;
-     text-align: center;
-     line-height: 50px;
-     border-radius: 10px;
-     box-shadow: 0 0 7px rgba(0,0,0,0.28);
-     border: 2.5px solid #149c21;
-     cursor: pointer;
-     transition: background 0.15s, box-shadow 0.2s;
- }
- #limits-box:hover {
-     background-color: #23b037;
-     box-shadow: 0 0 15px #32d74b99;
- }
- #limits-tooltip {
-     top: 130px;
-     left: 60px;
- }
- #status-filter {
-     top: 150px;
-     left: 20px;
-     display: flex;
-     flex-direction: column;
-     gap: 22px;
-     z-index: 1002;
-     /* обновлено для крупнее текста */
-     font-size: 20px;
-     font-weight: bold;
-     color: #333;
-     line-height: 1.4;
- }
- #status-filter > div > div:not(.filter-icon) {
-     font-size: 19px;
-     font-weight: bold;
-     color: #2c2c2c;
-     margin-left: 8px;
- }
- #status-list {
-     top: 150px;
-     left: 60px;
- }
+        :root{ --header-h: 60px; }
 
- /* --------- ДАЛЕЕ ТВОИ СТАРЫЕ СТИЛИ, их не трогай --------- */
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f4; margin: 0; padding: 0; }
 
- #search-box {
-     padding: 8px;
-     width: 200px;
-     border: 1px solid #ccc;
-     border-radius: 4px;
- }
- #search-button {
-     padding: 8px 15px;
-     background-color: #2c3e50;
-     color: white;
-     border: none;
-     border-radius: 4px;
-     cursor: pointer;
- }
- #search-button:hover {
-     background-color: #1a252f;
- }
- #sector-buttons button {
-     padding: 5px 30px;
-     font-size: 16px;
-     font-weight: bold;
-     background: linear-gradient(180deg, #222 0%, #000 100%);
-     border: 3px solid #bbb;
-     border-radius: 50px;
-     color: #fff;
-     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-     cursor: pointer;
-     box-shadow:
-         0 4px 10px rgba(0, 0, 0, 0.8),
-         inset 0 2px rgba(255, 255, 255, 0.3),
-         inset 0 -2px 3px rgba(0, 0, 0, 0.6);
-     transition: all 0.3s ease;
- }
- #sector-buttons button.active {
-     background: linear-gradient(180deg, #444 0%, #111 100%);
-     border-color: green;
-     box-shadow:
-         0 6px 15px rgba(0, 0, 0, 0.9),
-         inset 0 3px rgba(255, 255, 255, 0.5),
-         inset 0 -3px 4px rgba(0, 0, 0, 0.7);
-     transform: scale(1.02);
- }
- #sector-buttons button:hover {
-     background: linear-gradient(180deg, #333 0%, #111 100%);
-     transform: scale(1.05);
-     border-color: white;
- }
- .hidden {
-     display: none;
- }
- .filter-icon {
-     width: 34px; /* стало чуть больше */
-     height: 34px;
-     border-radius: 50%;
-     cursor: pointer;
-     border: 2px solid #333;
- }
- #status-list {
-     background: #fff;
-     padding: 10px;
-     border: 1px solid #999;
-     border-radius: 6px;
-     box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
-     z-index: 1003;
-     max-height: 300px;
-     overflow-y: auto;
-     font-size: 15px;
-     text-align: left;
- }
- #status-list div {
-     cursor: pointer;
-     padding: 4px 0;
-     border-bottom: 1px solid #eee;
- }
- #status-list div:hover {
-     background-color: #f0f0f0;
- }
+        .header {
+            display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between;
+            row-gap: 0; width: 100vw; max-width: none; margin: 0;
+            position: fixed; top: 0; left: 0; z-index: 10;
+            background: #7291bf; color: rgba(255,255,255,.90); padding: 0 10px;
+        }
 
-  /* базовый контейнер твоей иконки 48x48 */
-   .station-ico {
-     width: 48px;
-     height: 48px;
-     position: relative;
-     border: 2px solid black;
-     border-radius: 6px;
-     box-shadow: 0 0 5px rgba(0,0,0,0.5);
-     overflow: hidden;
-     background: rgba(255,255,255,0.75);
-   }
-   .station-ico img.base {
-     width: 100%;
-     height: 100%;
-     object-fit: contain;
-     display: block;
-   }
+        h1 { color: inherit; margin: 0; text-align: left; padding-left: 30px; }
 
-   /* ========= SP: “ротор” вращается ========= */
-   .station-ico.sp .rotor {
-     position: absolute;
-     /* подстройка позиции ротора — можно чуть двигать */
-     left: 10px;
-     top: 18px;
-     width: 16px;
-     height: 16px;
-     border-radius: 50%;
-     background:
-       conic-gradient(
-         rgba(255,255,255,0.95) 0 20%,
-         rgba(0,0,0,0.2) 20% 25%,
-         rgba(255,255,255,0.95) 25% 45%,
-         rgba(0,0,0,0.2) 45% 50%,
-         rgba(255,255,255,0.95) 50% 70%,
-         rgba(0,0,0,0.2) 70% 75%,
-         rgba(255,255,255,0.95) 75% 95%,
-         rgba(0,0,0,0.2) 95% 100%
-       );
-     border: 1px solid rgba(0,0,0,0.35);
-     animation: spin 0.9s linear infinite;
-     opacity: 0.95;
-   }
-   @keyframes spin { from {transform: rotate(0deg);} to {transform: rotate(360deg);} }
+        #search-container { order: 3; margin-left: auto; display: flex; align-items: center; gap: 5px; z-index: 11; }
 
-   /* ========= DISP: мигающая точка ========= */
-   .station-ico.disp .blink {
-     position:absolute;
-     right: 4px;
-     top: 4px;
-     width: 10px;
-     height: 10px;
-     border-radius: 50%;
-     background: #00ff3b;
-     box-shadow: 0 0 8px rgba(0,255,60,0.9);
-     animation: blink 1.1s ease-in-out infinite;
-   }
-   @keyframes blink { 0%,100%{opacity:.2} 50%{opacity:1} }
+        #sector-buttons {
+            order: 2; flex-grow: 1; display: flex; justify-content: center; gap: 15px;
+            flex-wrap: wrap; margin: 0; width: auto; position: static; background: none; padding: 0;
+        }
 
-   /* ========= CT/CET: “дым” (если хочешь через GIF) ========= */
-   .station-ico.ct .smoke {
-     position:absolute;
-     left: 0;
-     top: 0;
-     width: 48px;
-     height: 48px;
-     pointer-events: none;
-     opacity: 0.95;
-   }
+        #map {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            width: 100vw; height: 100vh; z-index: 1; border: none; border-radius: 0;
+            box-shadow: none; margin: 0; max-width: none;
+        }
+
+        #limits-box, #limits-tooltip, #status-filter, #status-list { position: fixed; z-index: 12; }
+
+        #limits-box {
+            top: 55px; left: 71px; width: 30px; height: 30px; line-height: 30px; font-size: 18px;
+            background-color: #32d74b; color: #fff; font-weight: bold; text-align: center;
+            border-radius: 8px; box-shadow: 0 0 7px rgba(0,0,0,0.28);
+            border: 2.5px solid #149c21; cursor: pointer;
+            transition: background 0.15s, box-shadow 0.2s;
+        }
+        #limits-box:hover { background-color: #23b037; box-shadow: 0 0 15px #32d74b99; }
+        #limits-tooltip { top: 60px; left: 105px; }
+
+        #status-filter {
+            top: 150px; left: 20px; display: flex; flex-direction: column; gap: 22px;
+            z-index: 1002; font-size: 20px; font-weight: bold; color: #333; line-height: 1.4;
+        }
+        #status-filter > div > div:not(.filter-icon) { font-size: 19px; font-weight: bold; color: #2c2c2c; margin-left: 8px; }
+        #status-list { top: 150px; left: 60px; }
+
+        /* ✅ сдвиг всех Leaflet-контролов ниже шапки */
+        .leaflet-top{ top: calc(var(--header-h) + 10px) !important; }
+
+        #search-box { padding: 8px; width: 200px; border: 1px solid #ccc; border-radius: 4px; }
+        #search-button { padding: 8px 15px; background-color: #2c3e50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        #search-button:hover { background-color: #1a252f; }
+
+        #sector-buttons button {
+            padding: 5px 30px; font-size: 16px; font-weight: bold;
+            background: linear-gradient(180deg, #222 0%, #000 100%);
+            border: 3px solid #bbb; border-radius: 50px; color: #fff;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.8), inset 0 2px rgba(255, 255, 255, 0.3), inset 0 -2px 3px rgba(0, 0, 0, 0.6);
+            transition: all 0.3s ease;
+        }
+        #sector-buttons button.active {
+            background: linear-gradient(180deg, #444 0%, #111 100%);
+            border-color: green;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.9), inset 0 3px rgba(255, 255, 255, 0.5), inset 0 -3px 4px rgba(0, 0, 0, 0.7);
+            transform: scale(1.02);
+        }
+        #sector-buttons button:hover { background: linear-gradient(180deg, #333 0%, #111 100%); transform: scale(1.05); border-color: white; }
+
+        .hidden { display: none; }
+        .filter-icon { width: 34px; height: 34px; border-radius: 50%; cursor: pointer; border: 2px solid #333; }
+
+        #status-list {
+            background: #fff; padding: 10px; border: 1px solid #999; border-radius: 6px;
+            box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
+            z-index: 1003; max-height: 300px; overflow-y: auto;
+            font-size: 15px; text-align: left;
+        }
+        #status-list div { cursor: pointer; padding: 4px 0; border-bottom: 1px solid #eee; }
+        #status-list div:hover { background-color: #f0f0f0; }
+
+        .station-ico { width: 48px; height: 48px; position: relative; border: 2px solid black; border-radius: 6px; box-shadow: 0 0 5px rgba(0,0,0,0.5); overflow: hidden; background: rgba(255,255,255,0.75); display: flex; align-items: center; justify-content: center; }
+        .station-ico img.base { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+        .station-ico.sp { background: transparent !important; border: none !important; box-shadow: none !important; overflow: visible !important; width: 0 !important; height: 0 !important; }
+        .station-ico.sp .rotor { position: absolute; left: 0; top: 0; width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.35); opacity: 0.95; }
+
+        .station-ico.sp.run .rotor {
+            background: conic-gradient(rgba(255, 0, 0, 1) 0 20%, rgba(128, 0, 0, 0.25) 20% 25%, rgba(255, 0, 0, 1) 25% 45%, rgba(128, 0, 0, 0.25) 45% 50%, rgba(255, 0, 0, 1) 50% 70%, rgba(128, 0, 0, 0.25) 70% 75%, rgba(255, 0, 0, 1) 75% 95%, rgba(128, 0, 0, 0.25) 95% 100%);
+            box-shadow: 0 0 12px rgba(255, 0, 0, 0.65);
+            animation: spin 2s linear infinite;
+        }
+        .station-ico.sp.stop .rotor {
+            background: conic-gradient(rgba(0, 128, 0, 1) 0 20%, rgba(0, 64, 0, 0.25) 20% 25%, rgba(0, 128, 0, 1) 25% 45%, rgba(0, 64, 0, 0.25) 45% 50%, rgba(0, 128, 0, 1) 50% 70%, rgba(0, 64, 0, 0.25) 70% 75%, rgba(0, 128, 0, 1) 75% 95%, rgba(0, 64, 0, 0.25) 95% 100%);
+            box-shadow: 0 0 10px rgba(0, 128, 0, 0.45);
+            animation: none;
+        }
+        @keyframes spin { from {transform: translate(-50%, -50%) rotate(0deg);} to {transform: translate(-50%, -50%) rotate(360deg);} }
+
+        .station-ico.ct, .station-ico.disp { background: transparent !important; border: none !important; box-shadow: none !important; overflow: visible !important; border-radius: 0 !important; display: block !important; }
+        .station-ico.cet{ background: transparent !important; border: none !important; box-shadow: none !important; overflow: visible !important; border-radius: 0 !important; display: block !important; }
+
+        .station-ico .tri{
+            width: 0; height: 0;
+            border-left: 14px solid transparent;
+            border-right: 14px solid transparent;
+            border-bottom: 26px solid rgba(0,128,0,1);
+            filter: drop-shadow(0 0 3px rgba(0,0,0,0.35));
+        }
+        .station-ico.ct .tri{ border-left-width: 18px; border-right-width: 18px; border-bottom-width: 30px; }
+        .station-ico.cet .tri{ border-left-width: 20px; border-right-width: 20px; border-bottom-width: 35px; }
+        .station-ico.disp .tri{ border-left-width: 10px; border-right-width: 10px; border-bottom-width: 18px; }
+
+        .station-ico.ct.run .tri, .station-ico.disp.run .tri, .station-ico.cet.run .tri{ border-bottom-color: red; }
+        .station-ico.ct.stop .tri, .station-ico.disp.stop .tri, .station-ico.cet.stop .tri{ border-bottom-color: #008000; }
+
+        .station-ico.disp{ width: 0 !important; height: 0 !important; }
+        .station-ico.ct, .station-ico.cet{ width: 0 !important; height: 0 !important; }
+        .station-ico.sp .rotor{ width: 16px; height: 16px; }
+
+        .boiler-div-icon{ background: transparent !important; border: none !important; }
+
+        .leaflet-control-zoom { display: none; }
+
+        .fullscreen-custom {
+            background: #fff; width: 30px; height: 30px; line-height: 30px; text-align: center;
+            font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 0;
+        }
+        .fullscreen-custom span { display: block; }
+        .fullscreen-custom:hover { background: #f0f0f0; }
+
+        .leaflet-control-fullscreen { margin-top: 0 !important; }
+
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: .25rem; text-decoration: none; cursor: pointer; user-select: none; white-space: nowrap; }
+        .btn-sm { height: 26px; padding: 0 10px; border-radius: 6px; font-size: 13px; line-height: 1; }
+        .btn-outline-light { color: #fff; background: transparent; border: 1px solid rgba(255,255,255,.85); }
+        .btn-outline-light:hover { background: #fff; color: #111; text-decoration: none; }
+
+        .footer {
+            position: fixed;
+            left: 10px;
+            bottom: 8px;
+            z-index: 1005; /* выше карты */
+            font-size: 12px;
+            color: #eee;
+            background: rgba(0, 0, 0, 0.45);
+            padding: 4px 8px;
+            border-radius: 6px;
+            pointer-events: none; /* не мешает кликам по карте */
+            user-select: none;
+        }
 
 
     </style>
 </head>
+
 <body>
 <div class="header">
+    <a href="http://10.1.1.248:1010/" class="btn btn-outline-light btn-sm" rel="noopener">SCADA&nbsp;Portal</a>
     <h1>Harta Sinoptică</h1>
+
     <div id="search-container">
-        <input
-                id="search-box"
-                list="search-history"
-                placeholder="Întroduceți Nr obiectului..."
-                type="text"
-        />
+        <input id="search-box" list="search-history" placeholder="Întroduceți Nr obiectului..." type="text"/>
         <datalist id="search-history"></datalist>
         <button id="search-button">CAUTĂ</button>
     </div>
-</div>
 
-<div id="sector-buttons">
-    <button data-sector="1">Centru</button>
-    <button data-sector="2">Rășcani</button>
-    <button data-sector="3">Botanica</button>
-    <button data-sector="4">Buiucani</button>
-    <button data-sector="6">Ciocana</button>
-    <button data-sector="0">Arată Toate</button>
+    <div id="sector-buttons">
+        <button data-sector="1">Centru</button>
+        <button data-sector="2">Rășcani</button>
+        <button data-sector="3">Botanica</button>
+        <button data-sector="4">Buiucani</button>
+        <button data-sector="6">Ciocana</button>
+        <button data-sector="0">Arată Toate</button>
+    </div>
 </div>
 
 <div id="limits-box">L</div>
 <div class="hidden" id="limits-tooltip">Loading...</div>
 
-<div
-        id="status-filter"
-        style="
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-        align-items: center;
-      "
->
-    <div style="display: flex; flex-direction: column; align-items: center">
-        <div
-                class="filter-icon"
-                data-color="red"
-                style="background-color: red"
-        ></div>
-        <div style="font-size: 12px; color: #333; text-align: center">
-            Temperatura ridicată
-        </div>
+<div id="status-filter" style="display:flex; flex-direction:column; gap:20px; align-items:center;">
+    <div style="display:flex; flex-direction:column; align-items:center">
+        <div class="filter-icon" data-color="red" style="background-color:red"></div>
+        <div style="font-size:12px; color:#333; text-align:center">Temperatura ridicată</div>
     </div>
-    <div style="display: flex; flex-direction: column; align-items: center">
-        <div
-                class="filter-icon"
-                data-color="green"
-                style="background-color: green"
-        ></div>
-        <div style="font-size: 12px; color: #333; text-align: center">
-            Temperatura în normă
-        </div>
+    <div style="display:flex; flex-direction:column; align-items:center">
+        <div class="filter-icon" data-color="green" style="background-color:green"></div>
+        <div style="font-size:12px; color:#333; text-align:center">Temperatura în normă</div>
     </div>
-    <div style="display: flex; flex-direction: column; align-items: center">
-        <div
-                class="filter-icon"
-                data-color="blue"
-                style="background-color: blue"
-        ></div>
-        <div style="font-size: 12px; color: #333; text-align: center">
-            Temperatura joasă
-        </div>
+    <div style="display:flex; flex-direction:column; align-items:center">
+        <div class="filter-icon" data-color="blue" style="background-color:blue"></div>
+        <div style="font-size:12px; color:#333; text-align:center">Temperatura joasă</div>
     </div>
-    <div style="display: flex; flex-direction: column; align-items: center">
-        <div
-                class="filter-icon"
-                data-color="black"
-                style="background-color: black"
-        ></div>
-        <div style="font-size: 12px; color: #333; text-align: center">
-            Date expirate
-        </div>
+    <div style="display:flex; flex-direction:column; align-items:center">
+        <div class="filter-icon" data-color="black" style="background-color:black"></div>
+        <div style="font-size:12px; color:#333; text-align:center">Date expirate</div>
     </div>
 </div>
-
-<!--
-<div id="status-filter">
-<div
-class="filter-icon"
-data-color="red"
-style="background-color: red"
-title="Arată PTC/PTI care au depășit limita de temperatură"
-></div>
-<div
-class="filter-icon"
-data-color="green"
-style="background-color: green"
-title="Arată PTC/PTI al cărora  temperatura corespunde limitelor"
-></div>
-<div
-class="filter-icon"
-data-color="blue"
-style="background-color: blue"
-title="Arată PTC/PTI al cărora temperatură este sub limită"
-></div>
-<div
-class="filter-icon"
-data-color="black"
-style="background-color: black"
-title="Arată PTC/PTI ale cărora date sunt mai depășite decăt 15 minute "
-></div>
-</div>
--->
 
 <div class="hidden" id="status-list"></div>
-
 <div id="map"></div>
 
 <script>
-    const map = L.map("map").setView([47.01, 28.86], 12);
+    // ---------- helpers (без jQuery) ----------
+    const $ = (sel, root = document) => root.querySelector(sel);
+    const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
-    window.pumpsLoaded = false;
-    window.pipelinesLoaded = false;
-    window.zadviscaLoaded = false;
+    function normalizePumpKey(s) {
+        return (s || "").trim().toLowerCase().replace(/^pt_/, "");
+    }
 
-    // ссылки на слои
-    let heatPipelineLayer = null;
-    let zadviscaLayer = null;
+    function updateHeaderOffset() {
+        const header = document.querySelector('.header');
+        if (!header) return;
+        document.documentElement.style.setProperty('--header-h', header.offsetHeight + 'px');
+    }
 
-    // Ленивая подгрузка всех слоёв по зуму + автоматическое скрытие слоёв
-    map.on("zoomend", function () {
-      const z = map.getZoom();
+    function updatePopupTemps(popup, t1Live, t2Live) {
+        let content = popup.getContent();
+        content = content
+            .replace(/<b>T1:<\/b>[^<]*°C/, `<b>T1:</b> ${t1Live} °C`)
+            .replace(/<b>T2:<\/b>[^<]*°C/, `<b>T2:</b> ${t2Live} °C`);
+        popup.setContent(content).update();
+    }
 
-      // PTC/PTI
-      if (!window.pumpsLoaded && z >= 12) {
-        fetchAndRenderPumps();
-      }
+    // ---------- tiny fetch cache (ускорение) ----------
+    const FETCH_CACHE_TTL_MS = 5000; // 5 секунд
+    const fetchCache = new Map(); // url -> { t: number, data: any }
 
-      // Теплотрассы (витикю)
-      if (!window.pipelinesLoaded && z >= 18) {
-        fetchAndRenderPipelines();
-      } else if (window.pipelinesLoaded && heatPipelineLayer) {
-        if (z >= 18) {
-          if (!map.hasLayer(heatPipelineLayer))
-            map.addLayer(heatPipelineLayer);
-        } else {
-          if (map.hasLayer(heatPipelineLayer))
-            map.removeLayer(heatPipelineLayer);
-        }
-      }
+    function fetchJsonCached(url, ttlMs = FETCH_CACHE_TTL_MS) {
+        const now = Date.now();
+        const cached = fetchCache.get(url);
+        if (cached && (now - cached.t) < ttlMs) return Promise.resolve(cached.data);
 
-      // Zadvisca
-      if (!window.zadviscaLoaded && z >= 18) {
-        fetchAndRenderZadvisca();
-      } else if (window.zadviscaLoaded && zadviscaLayer) {
-        if (z >= 18) {
-          if (!map.hasLayer(zadviscaLayer)) map.addLayer(zadviscaLayer);
-        } else {
-          if (map.hasLayer(zadviscaLayer)) map.removeLayer(zadviscaLayer);
-        }
-      }
+        return fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                fetchCache.set(url, { t: now, data });
+                return data;
+            });
+    }
+
+    // ---------- MAP ----------
+    const map = L.map("map", { maxZoom: 20 }).setView([47.01, 28.86], 12);
+    const DETAILS_ZOOM = 18;
+
+    window.addEventListener('load', updateHeaderOffset);
+    window.addEventListener('resize', updateHeaderOffset);
+    setTimeout(updateHeaderOffset, 200);
+    setTimeout(updateHeaderOffset, 800);
+
+    const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+        maxZoom: 20,
+        maxNativeZoom: 19
     });
 
+    const cartoLight = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+        attribution: "© OpenStreetMap © CARTO",
+        maxZoom: 20,
+        maxNativeZoom: 20
+    });
+
+    const esriSat = L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        {
+            attribution: "Tiles © Esri",
+            maxZoom: 20,
+            maxNativeZoom: 19
+        }
+    );
+
+    osm.addTo(map);
+    L.control.layers({
+        "OpenStreetMap": osm,
+        "Carto Light": cartoLight,
+        "Satellite (Esri)": esriSat
+    }, null, { position: "topleft" }).addTo(map);
+
+    // ---------- MarkerCluster ----------
     const markers = L.markerClusterGroup({
-      maxClusterRadius: 70,
-      disableClusteringAtZoom: 17,
+        maxClusterRadius: 70,
+        disableClusteringAtZoom: 17,
     });
-    const pumpMarkers = {};
+
+    const pumpMarkers = {}; // key(normalized) -> marker
     const iconCache = {};
-    let exteriorTemp = null;
+
+    const PUMP_FONT_PX = 12;
+    const PUMP_PAD_Y = 2;
+    const PUMP_PAD_X = 6;
+    const PUMP_RADIUS = 5;
+    const PUMP_MIN_W = 34;
+
     let limits = {};
     let lastBulkUpdate = 0;
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap contributors",
-    }).addTo(map);
+    let pumpsLoaded = false;
+    let pipelinesLoaded = false;
+    let zadviscaLoaded = false;
 
-    //  Отрисовка полигонов секторов на карте
-    const sectorPolygons = {};
-
-    Object.entries(sectors).forEach(([sectorName, sectorData]) => {
-      const polygon = L.polygon(sectorData.latlng, {
-        color: sectorData.color,
-        fillOpacity: 0.03,
-        weight: 2,
-      }).bindPopup(`<b>${sectorName}</b>`);
-
-      sectorPolygons[sectorName] = polygon; // сохраняем полигоны для управления
-
-      polygon.addTo(map);
-    });
+    let heatPipelineLayer = null;
+    let zadviscaLayer = null;
 
     function getColoredIcon(name, color) {
-      const key = `${name}_${color}`;
-      if (!iconCache[key]) {
-        iconCache[key] = L.divIcon({
-          html: `<div align="center" style="color:white;border-radius:5px;background-color:${color};padding:2px">${name}</div>`,
-          iconSize: [55],
-          popupAnchor: [0, -5],
-        });
-      }
-      return iconCache[key];
-    }
-
-    function getMarkerColor(temp, ext, timestamp) {
-      const ageMin = (Date.now() - new Date(timestamp).getTime()) / 60000;
-      if (ageMin > 15) return "black";
-      if (limits.T1max !== null && temp >= limits.T1max) return "red";
-      if (limits.T1min !== null && temp <= limits.T1min) return "blue";
-      return "green";
+        const key = `${name}_${color}`;
+        if (!iconCache[key]) {
+            const h = PUMP_FONT_PX + (PUMP_PAD_Y * 2) + 6;
+            iconCache[key] = L.divIcon({
+                className: "",
+                html: `
+                    <div style="
+                        display:inline-block;
+                        min-width:${PUMP_MIN_W}px;
+                        padding:${PUMP_PAD_Y}px ${PUMP_PAD_X}px;
+                        font-size:${PUMP_FONT_PX}px;
+                        font-weight:700;
+                        line-height:1.1;
+                        color:white;
+                        border-radius:${PUMP_RADIUS}px;
+                        background-color:${color};
+                        box-shadow:0 1px 3px rgba(0,0,0,.35);
+                        text-align:center;
+                        white-space:nowrap;
+                    ">
+                        ${String(name).replace(/^PT_/i, "")}
+                    </div>
+                `,
+                iconSize: null,
+                popupAnchor: [0, -h],
+            });
+        }
+        return iconCache[key];
     }
 
     function getCombinedMarkerColor(t1, t2, timestamp) {
-      const now = Date.now();
-      const ageMin = (now - new Date(timestamp).getTime()) / 60000;
+        const now = Date.now();
+        const ageMin = (now - new Date(timestamp).getTime()) / 60000;
+        if (ageMin > 15 || (isNaN(t1) && isNaN(t2))) return "black";
 
-      // Если данных нет или они слишком старые — черныи цвет
-      if (ageMin > 15 || (isNaN(t1) && isNaN(t2))) return "black";
+        const over =
+            (t1 != null && !isNaN(t1) && t1 > limits.T1max) ||
+            (t2 != null && !isNaN(t2) && t2 > limits.T2);
 
-      const over =
-        (t1 != null && !isNaN(t1) && t1 > limits.T1max) ||
-        (t2 != null && !isNaN(t2) && t2 > limits.T2);
+        const under =
+            t1 != null && !isNaN(t1) && t1 < limits.T1min &&
+            t2 != null && !isNaN(t2) && t2 < 35;
 
-      const under =
-        t1 != null &&
-        !isNaN(t1) &&
-        t1 < limits.T1min &&
-        t2 != null &&
-        !isNaN(t2) &&
-        t2 < 35;
-
-      if (over) return "red";
-      if (under) return "blue";
-      return "green";
+        if (over) return "red";
+        if (under) return "blue";
+        return "green";
     }
 
     function updateMarkersColors() {
-      if (Date.now() - lastBulkUpdate < 10000) return;
-      lastBulkUpdate = Date.now();
+        if (Date.now() - lastBulkUpdate < 10000) return;
+        lastBulkUpdate = Date.now();
 
-      fetch("/api/live_temp_bulk/")
-        .then((res) => res.json())
-        .then((data) => {
-          Object.entries(pumpMarkers).forEach(([name, marker]) => {
-            const normalizedName = name.toLowerCase().replace(/^pt_/, ""); // ⬅️ убираем префикс PT_
-            const temps = data[normalizedName];
-            if (!temps) return;
+        fetchJsonCached("/api/live_temp_bulk/", 3000)
+            .then((data) => {
+                Object.entries(pumpMarkers).forEach(([key, marker]) => {
+                    const temps = data[key];
+                    if (!temps) return;
 
-            const t1 = parseFloat(temps.T1);
-            const t2 = parseFloat(temps.T2);
-            const timestamp = temps.timestamp || new Date().toISOString();
+                    const t1 = parseFloat(temps.T1);
+                    const t2 = parseFloat(temps.T2);
+                    const timestamp = temps.timestamp || new Date().toISOString();
 
-            const color = getCombinedMarkerColor(t1, t2, timestamp);
-
-            marker.setIcon(getColoredIcon(name, color));
-          });
-        })
-        .catch((err) => console.error("Ошибка обновления маркеров:", err));
+                    const color = getCombinedMarkerColor(t1, t2, timestamp);
+                    marker.setIcon(getColoredIcon(key, color));
+                });
+            })
+            .catch((err) => console.error("Ошибка обновления маркеров:", err));
     }
 
     function fetchExteriorTemp() {
-      fetch("/api/temperature_limits")
-        .then((res) => res.json())
-        .then((data) => {
-          limits = data;
-          exteriorTemp = data.Text;
-          updateMarkersColors();
+        fetchJsonCached("/api/temperature_limits", 5000)
+            .then((data) => {
+                limits = data;
+                updateMarkersColors();
 
-          document.getElementById("limits-tooltip").style.whiteSpace = "pre";
-          document.getElementById("limits-tooltip").textContent =
-            `Text = ${limits.Text}°C    T1min = ${limits.T1min}°C    T1max = ${limits.T1max}°C    T2 = ${limits.T2}°C    Tacm = ${limits.Tacm}°C`;
-        })
-        .catch((err) => console.error("Ошибка загрузки лимитов:", err));
-    }
-
-    // 👇 ДОБАВЛЯЕМ СРАЗУ ПОСЛЕ getColoredIcon()
-    function getBoilerIcon(type) {
-      switch (type) {
-        case 3:
-          return "sp.png"; // Котельные SP
-        case 4:
-          return "disp.png"; // Диспетчерские
-        case 5:
-          return "verde.png"; // CET с трубой
-        default:
-          return "sp.png"; // По умолчанию
-      }
+                const tt = document.getElementById("limits-tooltip");
+                tt.style.whiteSpace = "pre";
+                tt.textContent =
+                    `Text = ${limits.Text}°C    T1min = ${limits.T1min}°C    T1max = ${limits.T1max}°C    T2 = ${limits.T2}°C    Tacm = ${limits.Tacm}°C`;
+            })
+            .catch((err) => console.error("Ошибка загрузки лимитов:", err));
     }
 
     function fetchAndRenderPumps() {
-      if (window.pumpsLoaded) return;
-      window.pumpsLoaded = true;
-      fetch("/api/pumps/")
-        .then((res) => res.json())
-        .then((data) => {
-          data.forEach((pump) => {
-            const type = pump.type_device === 1 ? "PTC" : "PTI";
-            const t1Display =
-              pump.T1 == null || isNaN(pump.T1) ? "N" : pump.T1;
-            const t2Display =
-              pump.T2 == null || isNaN(pump.T2) ? "N" : pump.T2;
+        if (pumpsLoaded) return;
+        pumpsLoaded = true;
 
-            const marker = L.marker([pump.lat, pump.longitude], {
-              icon: getColoredIcon(pump.param_name, "green"),
-              number_map: pump.number_map,
-            }).bindPopup(
-              `<b>${type}</b><br><b>${pump.param_name.replace(/^PT_/i, "")}</b><br>${pump.address}<br><b>T1:</b> ${t1Display} °C<br><b>T2:</b> ${t2Display} °C<br>
-                        <a href='http://10.1.1.174/view/view_page.php?title=${encodeURIComponent(pump.param_name.replace(/\./g, "").replace("PT_", ""))}' target='_blank'>Schema</a>`,
-            );
+        fetch("/api/pumps/")
+            .then((res) => res.json())
+            .then((data) => {
+                data.forEach((pump) => {
+                    const type = pump.type_device === 1 ? "PTC" : "PTI";
+                    const t1Display = (pump.T1 == null || isNaN(pump.T1)) ? "N" : pump.T1;
+                    const t2Display = (pump.T2 == null || isNaN(pump.T2)) ? "N" : pump.T2;
 
-            marker.on("click", () => {
-              fetch(`/api/live_temp/${pump.param_name}/`)
-                .then((r) => r.json())
-                .then((data) => {
-                  const popup = marker.getPopup();
-                  let content = popup.getContent();
-                  const t1Live =
-                    data.T1 == null || isNaN(data.T1) ? "N" : data.T1;
-                  const t2Live =
-                    data.T2 == null || isNaN(data.T2) ? "N" : data.T2;
-                  content = content
-                    .replace(/<b>T1:<\/b>[^<]*°C/, `<b>T1:</b> ${t1Live} °C`)
-                    .replace(/<b>T2:<\/b>[^<]*°C/, `<b>T2:</b> ${t2Live} °C`);
-                  popup.setContent(content).update();
+                    const key = normalizePumpKey(pump.param_name);
+
+                    const marker = L.marker([pump.lat, pump.longitude], {
+                        icon: getColoredIcon(pump.param_name, "green"),
+                        number_map: pump.number_map,
+                    }).bindPopup(
+                        `<b>${type}</b><br><b>${String(pump.param_name).replace(/^PT_/i, "")}</b><br>${pump.address}<br>
+                         <b>T1:</b> ${t1Display} °C<br><b>T2:</b> ${t2Display} °C<br>
+                         <a href='http://10.1.1.174/view/view_page.php?title=${encodeURIComponent(String(pump.param_name).replace(/\./g, "").replace("PT_", ""))}' target='_blank'>Schema</a>`
+                    );
+
+                    marker.on("click", () => {
+                        fetchJsonCached(`/api/live_temp/${encodeURIComponent(pump.param_name)}/`, 3000)
+                            .then((d) => {
+                                const t1Live = (d.T1 == null || isNaN(d.T1)) ? "N" : d.T1;
+                                const t2Live = (d.T2 == null || isNaN(d.T2)) ? "N" : d.T2;
+                                updatePopupTemps(marker.getPopup(), t1Live, t2Live);
+                            })
+                            .catch(() => {});
+                    });
+
+                    markers.addLayer(marker);
+                    pumpMarkers[key] = marker;
                 });
-            });
 
-            markers.addLayer(marker);
-            pumpMarkers[pump.param_name.toLowerCase().replace(/^pt_/, "")] =
-              marker;
-          });
+                map.addLayer(markers);
 
-          map.addLayer(markers);
-          fetchExteriorTemp();
-          setInterval(fetchExteriorTemp, 60000);
-        });
+                fetchExteriorTemp();
+                setInterval(fetchExteriorTemp, 60000);
+            })
+            .catch((e) => console.error("Ошибка загрузки pumps:", e));
     }
 
-    const boilerLayer = L.layerGroup().addTo(map); // отдельный слой для котельных
+    // ---------- Boilers ----------
+    const boilerLayer = L.layerGroup().addTo(map);
+    const spMarkersByParam = {};
+    let spLastUpdate = 0;
+
+    function applySPState(marker, onoff) {
+        const el = marker.getElement();
+        if (!el) return;
+
+        const ico = el.querySelector(".station-ico");
+        if (!ico) return;
+
+        if (ico.classList.contains("disp")) return;
+        if (ico.classList.contains("cet")) return;
+
+        if (onoff === null || onoff === undefined) return;
+
+        ico.classList.remove("run", "stop");
+        if (onoff === 1) ico.classList.add("run");
+        else if (onoff === 0) ico.classList.add("stop");
+    }
+
+    function updateAllSPStates() {
+        const now = Date.now();
+        if (now - spLastUpdate < 5000) return;
+        spLastUpdate = now;
+
+        Object.entries(spMarkersByParam).forEach(([param, marker]) => {
+            fetchJsonCached(`/api/boiler_onoff/${encodeURIComponent(param)}/`, 3000)
+                .then(d => applySPState(marker, d.onoff))
+                .catch(() => {});
+        });
+    }
 
     fetch("/api/boilers/")
-      .then((res) => res.json())
-      .then((data) => {
-        data.forEach((boiler) => {
-          const iconFile = getBoilerIcon(boiler.type_device);
+        .then((res) => res.json())
+        .then((data) => {
+            data.forEach((boiler) => {
+                const devName = (boiler.name_device || "").toUpperCase().trim();
+                const paramName = (boiler.param_name || "").trim();
 
-// класс по типу
-const cls =
-  boiler.type_device === 3 ? "sp" :
-  boiler.type_device === 4 ? "disp" :
-  boiler.type_device === 5 ? "ct" : "sp";
+                const isSP = devName.startsWith("SP");
+                const isDISP = devName.startsWith("DISP") || devName.includes("DISP") || (boiler.type_device === 4);
+                const isCET = (boiler.type_device === 5) || devName.includes("CET") || devName.startsWith("SURSA");
 
-const icon = L.divIcon({
-  className: "",
-  html: `
-    <div class="station-ico ${cls}">
-      <img class="base" src="/static/icons/${iconFile}" alt="station">
+                const cls = isSP ? "sp" : (isDISP ? "disp" : (isCET ? "cet" : "ct"));
 
-      ${cls === "sp"   ? `<div class="rotor"></div>` : ``}
-      ${cls === "disp" ? `<div class="blink"></div>` : ``}
+                let initialState = "stop";
+                if (isDISP) initialState = "run";
+                if (isCET) {
+                    if (paramName === "TabSin_CET2") initialState = "run";
+                    else if (paramName === "TabSin_CET1") initialState = "stop";
+                }
 
-      ${cls === "ct" ? `<img class="smoke" src="/static/icons/factory_smoke_full.gif" alt="smoke">` : ``}
-    </div>
-  `,
-  iconSize: [48, 48],
-  iconAnchor: [24, 48],
-  popupAnchor: [0, -48],
-});
+                const icon = L.divIcon({
+                    className: "boiler-div-icon",
+                    html: `
+                        <div class="station-ico ${cls} ${initialState}">
+                            ${cls === "sp" ? `<div class="rotor"></div>` : ``}
+                            ${cls !== "sp" ? `<div class="tri"></div>` : ``}
+                        </div>
+                    `,
+                    iconSize: isSP ? [28, 28] : (cls === "disp" ? [16, 14] : [50, 50]),
+                    iconAnchor: isSP ? [14, 14] : (cls === "disp" ? [8, 14] : [25, 50]),
+                    popupAnchor: isSP ? [0, -14] : (cls === "disp" ? [0, -14] : [0, -24]),
+                });
 
-
-          // --- Добавляем плейсхолдеры температуры в попап ---
-          const marker = L.marker([boiler.latitude, boiler.longitude], {
-            icon: icon,
-            title: boiler.name_device,
-            number_map: boiler.sector_id || 0,
-          }).bindPopup(`
-                <b>${boiler.name_device}</b><br>
-                ${boiler.address}<br>
-                <i>${boiler.param_name}</i><br>
-                <b>T1:</b> ... °C<br>
-                <b>T2:</b> ... °C
+                const marker = L.marker([boiler.latitude, boiler.longitude], {
+                    icon: icon,
+                    title: boiler.name_device,
+                    number_map: boiler.sector_id || 0,
+                }).bindPopup(`
+                    <b>${boiler.name_device}</b><br>
+                    ${boiler.address}<br>
+                    <i>${boiler.param_name}</i><br>
+                    <b>T1:</b> ... °C<br>
+                    <b>T2:</b> ... °C
                 `);
 
-          // --- По клику грузим live-данные именно для котельных ---
-          marker.on("click", () => {
-            fetch(`/api/live_temp_boiler/${boiler.param_name}/`)
-              .then((r) => r.json())
-              .then((data) => {
-                const popup = marker.getPopup();
-                let content = popup.getContent();
-                const t1Live =
-                  data.T1 == null || isNaN(data.T1) ? "N" : data.T1;
-                const t2Live =
-                  data.T2 == null || isNaN(data.T2) ? "N" : data.T2;
-                content = content
-                  .replace(/<b>T1:<\/b>[^<]*°C/, `<b>T1:</b> ${t1Live} °C`)
-                  .replace(/<b>T2:<\/b>[^<]*°C/, `<b>T2:</b> ${t2Live} °C`);
-                popup.setContent(content).update();
-              })
-              .catch((err) =>
-                console.error("Ошибка загрузки температуры котельной:", err),
-              );
-          });
+                marker.on("click", () => {
+                    fetchJsonCached(`/api/live_temp_boiler/${encodeURIComponent(boiler.param_name)}/`, 3000)
+                        .then((d) => {
+                            const t1Live = (d.T1 == null || isNaN(d.T1)) ? "N" : d.T1;
+                            const t2Live = (d.T2 == null || isNaN(d.T2)) ? "N" : d.T2;
+                            updatePopupTemps(marker.getPopup(), t1Live, t2Live);
+                        })
+                        .catch(() => {});
 
-          boilerLayer.addLayer(marker); // котельные НЕ идут в кластер!
-        });
-      });
+                    if (!isDISP && !isCET) {
+                        fetchJsonCached(`/api/boiler_onoff/${encodeURIComponent(boiler.param_name)}/`, 3000)
+                            .then(d => applySPState(marker, d.onoff))
+                            .catch(() => {});
+                    }
+                });
 
-    function searchObject() {
-      const query = $("#search-box")
-        .val()
-        .trim()
-        .toLowerCase()
-        .replace(/^pt_/, "");
-      saveSearchQuery(query);
-      markers.clearLayers();
+                boilerLayer.addLayer(marker);
 
-      if (!query) {
-        Object.values(pumpMarkers).forEach((m) => markers.addLayer(m));
-        if (markers.getLayers().length) map.fitBounds(markers.getBounds());
-        return;
-      }
+                if (!isDISP && !isCET) {
+                    spMarkersByParam[boiler.param_name] = marker;
+                    marker.on("add", () => {
+                        fetchJsonCached(`/api/boiler_onoff/${encodeURIComponent(boiler.param_name)}/`, 3000)
+                            .then(d => applySPState(marker, d.onoff))
+                            .catch(() => {});
+                    });
+                }
+            });
 
-      const variants = [query];
+            setInterval(updateAllSPStates, 20000);
+            setTimeout(updateAllSPStates, 1500);
+        })
+        .catch((e) => console.error("Ошибка загрузки boilers:", e));
 
-      for (const variant of variants) {
-        const marker = pumpMarkers[variant];
-        if (marker) {
-          markers.addLayer(marker);
-          map.setView(marker.getLatLng(), 16);
-          marker.openPopup();
-
-          // ✅ Загружаем актуальные данные
-          fetch(`/api/live_temp/${variant}/`)
-            .then((r) => r.json())
-            .then((data) => {
-              const popup = marker.getPopup();
-              let content = popup.getContent();
-
-              const t1Live =
-                data.T1 == null || isNaN(data.T1) ? "N" : data.T1;
-              const t2Live =
-                data.T2 == null || isNaN(data.T2) ? "N" : data.T2;
-
-              content = content
-                .replace(/<b>T1:<\/b>[^<]*°C/, `<b>T1:</b> ${t1Live} °C`)
-                .replace(/<b>T2:<\/b>[^<]*°C/, `<b>T2:</b> ${t2Live} °C`);
-
-              popup.setContent(content).update();
-            })
-            .catch((err) => console.error("Ошибка загрузки данных:", err));
-
-          return;
+    // ---------- Fullscreen ----------
+    (function() {
+        if (L && (L.Control && (L.Control.Fullscreen || L.Control.FullScreen))) {
+            if (L.Control.Fullscreen) map.addControl(new L.Control.Fullscreen());
+            else if (L.Control.FullScreen) map.addControl(new L.Control.FullScreen());
+        } else if (L.control && L.control.fullscreen) {
+            L.control.fullscreen().addTo(map);
+        } else {
+            const FullscreenControl = L.Control.extend({
+                options: { position: 'topleft' },
+                onAdd: function() {
+                    const container = L.DomUtil.create('div', 'leaflet-bar fullscreen-custom');
+                    container.innerHTML = '<span>&#x26F6;</span>';
+                    container.title = 'Full screen';
+                    container.onclick = function(e) {
+                        e.stopPropagation();
+                        const mapDiv = document.getElementById('map');
+                        if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement && !document.msFullscreenElement) {
+                            if (mapDiv.requestFullscreen) mapDiv.requestFullscreen();
+                            else if (mapDiv.mozRequestFullScreen) mapDiv.mozRequestFullScreen();
+                            else if (mapDiv.webkitRequestFullscreen) mapDiv.webkitRequestFullscreen();
+                            else if (mapDiv.msRequestFullscreen) mapDiv.msRequestFullscreen();
+                        } else {
+                            if (document.exitFullscreen) document.exitFullscreen();
+                            else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+                            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                            else if (document.msExitFullscreen) document.msExitFullscreen();
+                        }
+                        return false;
+                    };
+                    L.DomEvent.disableClickPropagation(container);
+                    return container;
+                }
+            });
+            map.addControl(new FullscreenControl());
         }
-      }
+    })();
 
-      alert("Obiectul nu a fost găsit!");
+    // ---------- Sector polygons ----------
+    const sectorPolygons = {};
+    Object.entries(sectors).forEach(([sectorName, sectorData]) => {
+        const polygon = L.polygon(sectorData.latlng, {
+            color: sectorData.color,
+            fillOpacity: 0.03,
+            weight: 2,
+        }).bindPopup(`<b>${sectorName}</b>`);
+        sectorPolygons[sectorName] = polygon;
+        polygon.addTo(map);
+    });
+
+    // ---------- Lazy load by zoom (debounce) ----------
+    let zoomTimer = null;
+    function handleZoom() {
+        const z = map.getZoom();
+
+        if (!pumpsLoaded && z >= 12) fetchAndRenderPumps();
+
+        if (!pipelinesLoaded && z >= DETAILS_ZOOM) {
+            fetchAndRenderPipelines();
+        } else if (pipelinesLoaded && heatPipelineLayer) {
+            const shouldShow = z >= DETAILS_ZOOM;
+            const has = map.hasLayer(heatPipelineLayer);
+            if (shouldShow && !has) map.addLayer(heatPipelineLayer);
+            if (!shouldShow && has) map.removeLayer(heatPipelineLayer);
+        }
+
+        if (!zadviscaLoaded && z >= DETAILS_ZOOM) {
+            fetchAndRenderZadvisca();
+        } else if (zadviscaLoaded && zadviscaLayer) {
+            const shouldShow = z >= DETAILS_ZOOM;
+            const has = map.hasLayer(zadviscaLayer);
+            if (shouldShow && !has) map.addLayer(zadviscaLayer);
+            if (!shouldShow && has) map.removeLayer(zadviscaLayer);
+        }
     }
 
+    map.on("zoomend", function () {
+        if (zoomTimer) clearTimeout(zoomTimer);
+        zoomTimer = setTimeout(handleZoom, 80);
+    });
+
+    // ---------- Search / UI ----------
     function saveSearchQuery(query) {
-      if (!query) return;
-      let history = JSON.parse(localStorage.getItem("searchHistory")) || [];
-      if (!history.includes(query)) {
-        history.push(query);
-        localStorage.setItem("searchHistory", JSON.stringify(history));
-        updateSearchHistoryList();
-      }
+        if (!query) return;
+        const history = JSON.parse(localStorage.getItem("searchHistory")) || [];
+        if (!history.includes(query)) {
+            history.push(query);
+            localStorage.setItem("searchHistory", JSON.stringify(history));
+            updateSearchHistoryList();
+        }
     }
 
     function updateSearchHistoryList() {
-      let history = JSON.parse(localStorage.getItem("searchHistory")) || [];
-      $("#search-history").empty();
-      history.forEach((item) => {
-        $("#search-history").append(`<option value="${item}">`);
-      });
+        const history = JSON.parse(localStorage.getItem("searchHistory")) || [];
+        const dl = document.getElementById("search-history");
+        dl.innerHTML = "";
+        history.forEach((item) => {
+            const opt = document.createElement("option");
+            opt.value = item;
+            dl.appendChild(opt);
+        });
     }
 
-    $(document).ready(function () {
-      updateSearchHistoryList();
-      $("#search-button").click(searchObject);
-      $("#search-box").keypress((e) => {
-        if (e.which === 13) searchObject();
-      });
-      $("#search-box").on("input", function () {
-        if (!$(this).val().trim()) {
-          markers.clearLayers();
-          Object.values(pumpMarkers).forEach((marker) =>
-            markers.addLayer(marker),
-          );
-          if (markers.getLayers().length) map.fitBounds(markers.getBounds());
-        }
-      });
-
-      const box = document.getElementById("limits-box");
-      const tooltip = document.getElementById("limits-tooltip");
-
-      box.addEventListener("mouseenter", () => {
-        tooltip.classList.remove("hidden");
-      });
-      box.addEventListener("mouseleave", () => {
-        tooltip.classList.add("hidden");
-      });
-    });
-
-    function focusSector(sector) {
-      markers.clearLayers();
-      Object.values(pumpMarkers).forEach((marker) => {
-        if (sector === 0 || marker.options.number_map === sector)
-          markers.addLayer(marker);
-      });
-      if (markers.getLayers().length) map.fitBounds(markers.getBounds());
+    function showAllPumpsAndFit() {
+        markers.clearLayers();
+        Object.values(pumpMarkers).forEach((m) => markers.addLayer(m));
+        if (markers.getLayers().length) map.fitBounds(markers.getBounds());
     }
 
-    // === Цвета обводки кнопок в соответствии с границами секторов
-    const sectorButtonColors = {
-      1: "red", // Centru
-      2: "purple", // Rascani
-      3: "green", // Botanica
-      4: "orange", // Buiucani
-      6: "blue", // Ciocana
-      0: "white", // Arată Toate
-    };
+    function searchObject() {
+        const raw = ($("#search-box").value || "");
+        const query = normalizePumpKey(raw);
+        saveSearchQuery(query);
 
-    // Существующий код для переключения по секторам
-    document.querySelectorAll("#sector-buttons button").forEach((button) => {
-      button.addEventListener("click", function () {
-        const sectorNumber = parseInt(this.dataset.sector);
-
-        const sectorMap = {
-          1: "Centru",
-          2: "Riscani",
-          3: "Botanica",
-          4: "Buiucani",
-          6: "Ciocana",
-          0: "Arată Toate",
-        };
-
-        const sectorName = sectorMap[sectorNumber];
+        if (!pumpsLoaded) fetchAndRenderPumps();
 
         markers.clearLayers();
-        Object.values(sectorPolygons).forEach((polygon) =>
-          map.removeLayer(polygon),
-        );
 
-        if (sectorName === "Arată Toate") {
-          Object.values(pumpMarkers).forEach((marker) =>
-            markers.addLayer(marker),
-          );
-          Object.values(sectorPolygons).forEach((polygon) =>
-            polygon.addTo(map),
-          );
-          if (markers.getLayers().length) map.fitBounds(markers.getBounds());
-        } else {
-          Object.entries(pumpMarkers).forEach(([name, marker]) => {
-            if (marker.options.number_map === sectorNumber)
-              markers.addLayer(marker);
-          });
-
-          sectorPolygons[sectorName].addTo(map);
-          if (markers.getLayers().length) map.fitBounds(markers.getBounds());
+        if (!query) {
+            showAllPumpsAndFit();
+            return;
         }
 
-        // Очистка активных кнопок
-        document.querySelectorAll("#sector-buttons button").forEach((btn) => {
-          btn.classList.remove("active");
-          btn.style.borderColor = "#bbb";
+        const marker = pumpMarkers[query];
+        if (marker) {
+            markers.addLayer(marker);
+            map.setView(marker.getLatLng(), 16);
+            marker.openPopup();
+            return;
+        }
+
+        alert("Obiectul nu a fost găsit!");
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        updateSearchHistoryList();
+
+        $("#search-button").addEventListener("click", searchObject);
+
+        $("#search-box").addEventListener("keydown", (e) => {
+            if (e.key === "Enter") searchObject();
         });
 
-        // Установка цвета обводки по сектору
-        const color = sectorButtonColors[sectorNumber] || "gray";
-        this.classList.add("active");
-        this.style.borderColor = color;
-      });
+        $("#search-box").addEventListener("input", function () {
+            if (!this.value.trim()) {
+                showAllPumpsAndFit();
+            }
+        });
+
+        const box = document.getElementById("limits-box");
+        const tooltip = document.getElementById("limits-tooltip");
+        box.addEventListener("mouseenter", () => tooltip.classList.remove("hidden"));
+        box.addEventListener("mouseleave", () => tooltip.classList.add("hidden"));
     });
 
-    const filterIcons = document.querySelectorAll(".filter-icon");
+    // ---------- Sector buttons ----------
+    const sectorButtonColors = { 1:"red", 2:"purple", 3:"green", 4:"orange", 6:"blue", 0:"white" };
+
+    $$("#sector-buttons button").forEach((button) => {
+        button.addEventListener("click", function () {
+            const sectorNumber = parseInt(this.dataset.sector, 10);
+            const sectorMap = { 1:"Centru", 2:"Riscani", 3:"Botanica", 4:"Buiucani", 6:"Ciocana", 0:"Arată Toate" };
+            const sectorName = sectorMap[sectorNumber];
+
+            if (!pumpsLoaded) fetchAndRenderPumps();
+
+            markers.clearLayers();
+            Object.values(sectorPolygons).forEach((polygon) => map.removeLayer(polygon));
+
+            if (sectorName === "Arată Toate") {
+                Object.values(pumpMarkers).forEach((marker) => markers.addLayer(marker));
+                Object.values(sectorPolygons).forEach((polygon) => polygon.addTo(map));
+                if (markers.getLayers().length) map.fitBounds(markers.getBounds());
+            } else {
+                Object.values(pumpMarkers).forEach((marker) => {
+                    if (marker.options.number_map === sectorNumber) markers.addLayer(marker);
+                });
+                if (sectorPolygons[sectorName]) sectorPolygons[sectorName].addTo(map);
+                if (markers.getLayers().length) map.fitBounds(markers.getBounds());
+            }
+
+            $$("#sector-buttons button").forEach((btn) => {
+                btn.classList.remove("active");
+                btn.style.borderColor = "#bbb";
+            });
+
+            const color = sectorButtonColors[sectorNumber] || "gray";
+            this.classList.add("active");
+            this.style.borderColor = color;
+        });
+    });
+
+    // ---------- Status filter ----------
+    const filterIcons = $$(".filter-icon");
     const statusList = document.getElementById("status-list");
 
-    // Закрытие списка при клике вне панели фильтра и списка
     document.addEventListener("click", (event) => {
-      if (
-        !event.target.closest("#status-filter") &&
-        !event.target.closest("#status-list")
-      ) {
-        statusList.classList.add("hidden");
-      }
+        if (!event.target.closest("#status-filter") && !event.target.closest("#status-list")) {
+            statusList.classList.add("hidden");
+        }
     });
 
     filterIcons.forEach((icon) => {
-      icon.addEventListener("click", (event) => {
-        event.stopPropagation(); // Не даём всплытию закрыть список
+        icon.addEventListener("click", (event) => {
+            event.stopPropagation();
 
-        const color = icon.dataset.color;
-        statusList.innerHTML = "";
+            if (!pumpsLoaded) fetchAndRenderPumps();
 
-        const matchingMarkers = Object.entries(pumpMarkers).filter(
-          ([name, marker]) =>
-            marker.options.icon.options.html.includes(
-              `background-color:${color}`,
-            ),
-        );
+            const color = icon.dataset.color;
+            statusList.innerHTML = "";
 
-        if (matchingMarkers.length === 0) {
-          statusList.innerHTML = "<i>Nu sunt obiecte!</i>";
-        } else {
-          matchingMarkers.forEach(([name, marker]) => {
-            const item = document.createElement("div");
-            item.textContent = name.toUpperCase();
+            const matching = Object.entries(pumpMarkers).filter(
+                ([name, marker]) => {
+                    const html = marker.options.icon && marker.options.icon.options && marker.options.icon.options.html;
+                    return typeof html === "string" && html.includes(`background-color:${color}`);
+                }
+            );
 
-            // Извлекаем цвет из HTML иконки маркера
-            const iconHtml = marker.options.icon.options.html;
-            const colorMatch = iconHtml.match(/background-color:([^;"]+)/);
-            const markerColor = colorMatch ? colorMatch[1].trim() : "#000";
+            if (matching.length === 0) {
+                statusList.innerHTML = "<i>Nu sunt obiecte!</i>";
+            } else {
+                matching.forEach(([name, marker]) => {
+                    const item = document.createElement("div");
+                    item.textContent = name.toUpperCase();
 
-            // Применяем цвет к тексту
-            item.style.color = markerColor;
+                    const iconHtml = marker.options.icon.options.html || "";
+                    const colorMatch = iconHtml.match(/background-color:([^;"]+)/);
+                    const markerColor = colorMatch ? colorMatch[1].trim() : "#000";
+                    item.style.color = markerColor;
 
-            item.onclick = () => {
-              markers.clearLayers();
-              markers.addLayer(marker);
-              map.setView(marker.getLatLng(), 16);
-              marker.openPopup();
-              fetch(`/api/live_temp/${name}/`)
-                .then((r) => r.json())
-                .then((data) => {
-                  const popup = marker.getPopup();
-                  let content = popup.getContent();
-                  const t1Live =
-                    data.T1 == null || isNaN(data.T1) ? "N" : data.T1;
-                  const t2Live =
-                    data.T2 == null || isNaN(data.T2) ? "N" : data.T2;
-                  content = content
-                    .replace(/<b>T1:<\/b>[^<]*°C/, `<b>T1:</b> ${t1Live} °C`)
-                    .replace(/<b>T2:<\/b>[^<]*°C/, `<b>T2:</b> ${t2Live} °C`);
-                  popup.setContent(content).update();
-                })
-                .catch((err) =>
-                  console.error("Ошибка загрузки данных:", err),
-                );
-            };
+                    item.addEventListener("click", () => {
+                        markers.clearLayers();
+                        markers.addLayer(marker);
+                        map.setView(marker.getLatLng(), 16);
+                        marker.openPopup();
+                    });
 
-            statusList.appendChild(item);
-          });
-        }
+                    statusList.appendChild(item);
+                });
+            }
 
-        statusList.classList.remove("hidden");
-      });
+            statusList.classList.remove("hidden");
+        });
     });
 
-    fetch("/api/get_ip/")
-      .then((response) => response.json())
-      .then((data) => {
-        console.log("IP адрес посетителя:", data.ip);
-      });
-
+    // ---------- GeoJSON layers (lazy) ----------
     function fetchAndRenderPipelines() {
-      if (window.pipelinesLoaded) return;
-      window.pipelinesLoaded = true;
-      fetch("{% static 'data/vitiku.geojson' %}")
-        .then((response) => {
-          if (!response.ok)
-            throw new Error("Не удалось загрузить vitiku.geojson");
-          return response.json();
-        })
-        .then((geojsonData) => {
-          heatPipelineLayer = L.geoJSON(geojsonData, {
-            style: {
-              color: "blue",
-              weight: 3,
-              opacity: 0.85,
-            },
-            onEachFeature: function (feature, layer) {
-              layer.bindPopup("Теплотрасса");
-            },
-          });
-          // Добавлять на карту только если зум >= 18
-          if (map.getZoom() >= 18) {
-            heatPipelineLayer.addTo(map);
-          }
-          // Если нет — не добавлять, появится автоматически при zoomend!
-        });
+        if (pipelinesLoaded) return;
+        pipelinesLoaded = true;
+
+        fetch("{% static 'data/vitiku.geojson' %}")
+            .then((response) => {
+                if (!response.ok) throw new Error("Не удалось загрузить vitiku.geojson");
+                return response.json();
+            })
+            .then((geojsonData) => {
+                heatPipelineLayer = L.geoJSON(geojsonData, {
+                    style: { color: "blue", weight: 3, opacity: 0.85 },
+                    onEachFeature: function (feature, layer) { layer.bindPopup("Теплотрасса"); },
+                });
+
+                if (map.getZoom() >= DETAILS_ZOOM) heatPipelineLayer.addTo(map);
+            })
+            .catch((e) => console.error(e));
     }
 
     function fetchAndRenderZadvisca() {
-      if (window.zadviscaLoaded) return;
-      window.zadviscaLoaded = true;
-      fetch("/static/data/zadvisca.geojson")
-        .then((response) => response.json())
-        .then((geojson) => {
-          zadviscaLayer = L.geoJSON(geojson, {
-            pointToLayer: (feature, latlng) => {
-              return L.circleMarker(latlng, {
-                radius: 6,
-                color: "black",
-                fillColor: "yellow",
-                fillOpacity: 0.7,
-              });
-            },
-            onEachFeature: function (feature, layer) {
-              const props = feature.properties;
-              let popupHtml = `<b>${props.name_node || ""}</b><br>`;
-              if (props.consumer_purpose)
-                popupHtml += `${props.consumer_purpose}<br>`;
-              if (props.NUMOBJ) popupHtml += `ID: ${props.NUMOBJ}<br>`;
-              layer.bindPopup(popupHtml);
-            },
-          });
-          // Добавлять на карту только если зум >= 18
-          if (map.getZoom() >= 18) {
-            zadviscaLayer.addTo(map);
-          }
-          // Если нет — не добавлять, появится автоматически при zoomend!
-        });
+        if (zadviscaLoaded) return;
+        zadviscaLoaded = true;
+
+        fetch("/static/data/zadvisca.geojson")
+            .then((response) => response.json())
+            .then((geojson) => {
+                zadviscaLayer = L.geoJSON(geojson, {
+                    pointToLayer: (feature, latlng) => {
+                        return L.circleMarker(latlng, {
+                            radius: 6,
+                            color: "black",
+                            fillColor: "yellow",
+                            fillOpacity: 0.7,
+                        });
+                    },
+                    onEachFeature: function (feature, layer) {
+                        const props = feature.properties || {};
+                        let popupHtml = `<b>${props.name_node || ""}</b><br>`;
+                        if (props.consumer_purpose) popupHtml += `${props.consumer_purpose}<br>`;
+                        if (props.NUMOBJ) popupHtml += `ID: ${props.NUMOBJ}<br>`;
+                        layer.bindPopup(popupHtml);
+                    },
+                });
+
+                if (map.getZoom() >= DETAILS_ZOOM) zadviscaLayer.addTo(map);
+            })
+            .catch((e) => console.error(e));
     }
+
+    fetch("/api/get_ip/").then((r) => r.json()).then((d) => console.log("IP:", d.ip)).catch(() => {});
 </script>
+<div class="footer">
+    © 2025 STIC SCADA — Inginer Victor Musteață · tel: 93-312
+</div>
+
 </body>
 </html>

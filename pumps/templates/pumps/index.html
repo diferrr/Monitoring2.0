@@ -3,447 +3,579 @@
 <!doctype html>
 <html lang="ro">
 <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <title>Monitoring Pompe</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Monitoring Pompe</title>
 
-    <style>
-        :root{
-            --bg:#f8f9fa;          /* фон страницы как у графика (light) */
-            --text:#212529;
-            --muted:#6b7280;
-            --line:#dee2e6;
+  <style>
+    :root{
+      --bg:#f8f9fa;
+      --text:#212529;
+      --muted:#6b7280;
+      --line:#dee2e6;
 
-            --nav-bg:#7291bf;      /* navbar как у графика (light) */
+      --nav-bg:#7291bf;
 
-            --g:#35d21b;
-            --r:#d21b1b;
-            --y:#f0c419;
-            --gr:#bdbdbd;
-        }
+      --g:#35d21b;
+      --r:#d21b1b;
+      --y:#f0c419;
+      --gr:#bdbdbd;
+    }
 
-        body.dark{
-            --bg:#495057;          /* фон страницы как у графика (dark) */
-            --text:#f8f9fa;
-            --muted:#9ca3af;
-            --line:#495057;
+    body.dark{
+      --bg:#495057;
+      --text:#f8f9fa;
+      --muted:#9ca3af;
+      --line:#495057;
 
-            --nav-bg:#343a40;      /* navbar как у графика (dark) */
-        }
+      --nav-bg:#343a40;
+    }
 
-        body{
-          font-family: Arial, sans-serif;
-          padding: 12px 14px;
-          background: var(--bg);
-          color: var(--text);
-          font-size: 15px;
-        }
+    body{
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 4px 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+    }
 
-        /* ===== Toolbar ===== */
-        .toolbar{
-            position: relative;
-            display:flex;
-            justify-content: center; /* T2 по центру */
-            align-items:center;
-            gap:12px;
-            margin: 6px 0 12px;
-        }
+    .toolbar{
+      position: relative;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
 
-        .toolbar label{
-          display:flex;
-          align-items:center;
-          gap:6px;
-          font-size: 14px;
-        }
+      background: var(--nav-bg);
+      padding: 6px 10px;
+      border-radius: 10px;
+      margin: 0 0 4px;
+    }
 
-        input[type="number"]{
-          height: 26px;
-          width: 80px;
-          padding: 0 6px;
-          border:1px solid var(--line);
-          border-radius: 6px;
-          font-size: 14px;
-          outline:none;
-          text-align:center;
-          background: var(--bg);
-          color: var(--text);
-        }
+    .toolbar,
+    .toolbar label{
+      color: rgba(255,255,255,.90);
+    }
 
-        /* кнопка темы */
-        #themeBtn{
-            position: absolute;
-            right: 0;          /* 👉 в самый правый край */
-            height:26px;
-            padding:0 10px;
-            border-radius:6px;
-            border:1px solid var(--line);
-            background:var(--bg);
-            color:var(--text);
-            cursor:pointer;
-        }
-        #themeBtn:hover{
-          background: rgba(0,0,0,0.05);
-        }
-        body.dark #themeBtn:hover{
-          background: rgba(255,255,255,0.08);
-        }
+    .toolbar label{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      font-size: 14px;
+      font-weight: 600;
+      user-select:none;
+    }
 
-        /* ===== Grid ===== */
-        .grid{
-          display:grid;
-          gap: 2px;
-          grid-template-columns: repeat(4, minmax(220px, 1fr));
-          align-items:start;
-        }
-        @media (max-width: 1200px){
-          .grid{ grid-template-columns: repeat(2, minmax(220px, 1fr)); }
-        }
-        @media (max-width: 700px){
-          .grid{ grid-template-columns: 1fr; }
-        }
+    .t2-controls{
+      margin: 0 auto;
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
 
-        .card{
-            border: 1px solid transparent;
-            border-radius: 12px;
-            padding: 6px 6px 5px;
-            background: var(--bg);
-            box-shadow: 0 1px 0 rgba(0,0,0,0.02);
-        }
+    .toolbar input[type="number"]{
+      height: 26px;
+      width: 80px;
+      padding: 0 6px;
+      border-radius: 6px;
+      font-size: 14px;
+      outline:none;
+      text-align:center;
 
-        /* ===== Цветные карточки (день) ===== */
-        .grid > .card:nth-child(1){
-          background: #f8fbff;
-          border-color: #dbeafe;
-        }
-        .grid > .card:nth-child(2){
-          background: #f9fff8;
-          border-color: #dcfce7;
-        }
-        .grid > .card:nth-child(3){
-          background: #fffaf5;
-          border-color: #ffedd5;
-        }
-        .grid > .card:nth-child(4){
-          background: #fff8fb;
-          border-color: #fce7f3;
-        }
+      background:#ffffff;
+      color:#111;
+      border:1px solid rgba(255,255,255,.55);
+    }
+    body.dark .toolbar input[type="number"]{
+      background:#212529;
+      color:#f8f9fa;
+      border:1px solid rgba(255,255,255,.25);
+    }
 
-        /* ===== Цветные карточки (ночь) ===== */
-        body.dark .grid > .card:nth-child(1){
-            background: #0f1a2b;
-            border-color: #1e3a8a;
-        }
-        body.dark .grid > .card:nth-child(2){
-            background: #0f2418;
-            border-color: #166534;
-        }
-        body.dark .grid > .card:nth-child(3){
-            background: #0f1a2b;
-            border-color: #1e3a8a;
-        }
-        body.dark .grid > .card:nth-child(4){
-            background: #0f2418;
-            border-color: #166534;
-        }
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:.25rem;
+      text-decoration:none;
+      cursor:pointer;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .btn-sm{
+      height:26px;
+      padding:0 10px;
+      border-radius:6px;
+      font-size:13px;
+      line-height:1;
+    }
+    .btn-outline-light{
+      color:#fff;
+      background:transparent;
+      border:1px solid rgba(255,255,255,.85);
+    }
+    .btn-outline-light:hover{
+      background:#fff;
+      color:#111;
+      text-decoration:none;
+    }
 
-        .head{
-          display:grid;
-          grid-template-columns: 72px 60px 64px 64px;
-          gap: 8px;
-          padding: 4px 6px 6px;
-          font-size: 13px;
-          font-weight: 800;
-          border-bottom: 1px solid var(--line);
-          margin-bottom: 6px;
-        }
-        .head > div:nth-child(3),
-        .head > div:nth-child(4){
-          text-align:right; /* заголовки как есть */
-        }
+    .btn-theme{
+      position: absolute;
+      right: 0;
+      height:26px;
+      padding:0 10px;
+      border-radius:6px;
+      border:1px solid rgba(255,255,255,.85);
+      color:#fff;
+      background:transparent;
+      cursor:pointer;
+      font-size:13px;
+    }
+    .btn-theme:hover{
+      background: rgba(255,255,255,0.15);
+    }
 
-        .row{
-          display:grid;
-          grid-template-columns: 72px 60px 64px 64px;
-          gap: 8px;
-          align-items:center;
-          padding: 4px 6px;
-          border-radius: 8px;
-        }
-        .row:hover{ background: rgba(0,0,0,0.05); }
-        body.dark .row:hover{ background: rgba(255,255,255,0.06); }
+    .grid{
+      display:grid;
+      gap: 2px;
+      grid-template-columns: repeat(4, minmax(220px, 1fr));
+      margin-top: 0;
+      align-items:start;
+    }
+    @media (max-width: 1200px){
+      .grid{ grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+    }
+    @media (max-width: 700px){
+      .grid{ grid-template-columns: 1fr; }
+    }
 
-        .pumps{
-          display:flex;
-          align-items:center;
-          gap: 4px;
-          min-height: 18px;
-          width:80px;
-        }
-        .sq{
-          width: 24px;
-          height: 24px;
-          display:inline-block;
-          border:1px solid #222;
-          border-radius: 2px;
-          background: var(--gr);
-        }
-        .sq.g{ background: var(--g); }
-        .sq.r{ background: var(--r); }
-        .sq.y{ background: var(--y); }
-        .sq.gr{ background: var(--gr); }
+    .card{
+      border: 1px solid transparent;
+      border-radius: 12px;
+      padding: 6px 6px 5px;
+      background: var(--bg);
+      box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+    }
 
-        /* ===== armed (ПКМ: квадрат -> круг) ===== */
-        .sq.armed{
-          border-radius: 50% !important;
-          box-shadow: 0 0 0 2px rgba(255,255,255,.45) inset;
-        }
-        body.dark .sq.armed{
-          box-shadow: 0 0 0 2px rgba(255,255,255,.35) inset;
-        }
+    .grid > .card:nth-child(1){ background: #f8fbff; border-color: #dbeafe; }
+    .grid > .card:nth-child(2){ background: #f9fff8; border-color: #dcfce7; }
+    .grid > .card:nth-child(3){ background: #fffaf5; border-color: #ffedd5; }
+    .grid > .card:nth-child(4){ background: #fff8fb; border-color: #fce7f3; }
 
-        .ptc{
-          font-weight: 800;
-          font-size: 15px;
-        }
+    body.dark .grid > .card:nth-child(1){ background: #0f1a2b; border-color: #1e3a8a; }
+    body.dark .grid > .card:nth-child(2){ background: #0f2418; border-color: #166534; }
+    body.dark .grid > .card:nth-child(3){ background: #0f1a2b; border-color: #1e3a8a; }
+    body.dark .grid > .card:nth-child(4){ background: #0f2418; border-color: #166534; }
 
-        /* значения T2/Q должны ровно стать под заголовками */
-        .val{
-          font-size: 15px;
-          text-align:right;            /* важно: как у заголовков */
-          justify-self:end;            /* важно для grid */
-          font-variant-numeric: tabular-nums;
-        }
-        .val a{
-          display:block;               /* чтобы не было микросдвигов */
-          text-align: inherit;
-        }
+    .head{
+      display:grid;
+      grid-template-columns: 72px 60px 64px 64px;
+      gap: 8px;
+      padding: 4px 6px 6px;
+      font-size: 13px;
+      font-weight: 800;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 6px;
+    }
+    .head > div:nth-child(3),
+    .head > div:nth-child(4){
+      text-align:right;
+    }
 
-        .t2-alert{
-          color: var(--r);
-          font-weight: 900;
-        }
+    .row{
+      display:grid;
+      grid-template-columns: 72px 60px 64px 64px;
+      gap: 8px;
+      align-items:center;
+      padding: 4px 6px;
+      border-radius: 8px;
+    }
+    .row:hover{ background: rgba(0,0,0,0.05); }
+    body.dark .row:hover{ background: rgba(255,255,255,0.06); }
 
-        a{
-          color: inherit;
-          text-decoration:none;
-        }
-        a:hover{ text-decoration: underline; }
+    .pumps{
+      display:flex;
+      align-items:center;
+      gap: 4px;
+      min-height: 18px;
+      width:80px;
+    }
 
-        /* 2-я карточка: больше места для 3-х квадратов */
-        .grid > .card:nth-child(2) .head{
-          grid-template-columns: 84px 60px 64px 64px;
-        }
-        .grid > .card:nth-child(2) .row{
-          grid-template-columns: 84px 60px 64px 64px;
-        }
-        .grid > .card:nth-child(2) .pumps{
-          width:84px;
-        }
+    .sq{
+      width: 24px;
+      height: 24px;
+      display:inline-block;
+      border:1px solid #222;
+      border-radius: 50%;
+      background: var(--gr);
+    }
+    .sq.g{ background: var(--g); }
+    .sq.r{ background: var(--r); }
+    .sq.y{ background: var(--y); }
+    .sq.gr{ background: var(--gr); }
 
-        /* ===== КНОПКА ТЕМЫ (bootstrap-like) ===== */
-        .btn-theme{
-            position: absolute;
-            right: 0;
-            height:26px;
-            padding: 0 10px;
-            border-radius: 6px;
-            background: transparent;
-            border: 1px solid var(--line);
-            color: var(--text);
-            font-size: 13px;
-            cursor: pointer;
-        }
-        .btn-theme:hover{
-            background: rgba(0,0,0,0.06);
-        }
-        body.dark .btn-theme:hover{
-            background: rgba(255,255,255,0.08);
-        }
+    .sq.sound-off{
+      border-radius: 2px !important;
+      opacity: 0.75;
+    }
 
-        .toolbar{
-            position: relative;
-            display:flex;
-            align-items:center;
-            margin: 6px 0 12px;
-        }
+    .sq.sound-on{
+      box-shadow: 0 0 0 2px rgba(255,255,255,.35) inset;
+    }
+    body.dark .sq.sound-on{
+      box-shadow: 0 0 0 2px rgba(255,255,255,.25) inset;
+    }
 
-        /* центр экрана */
-        .t2-controls{
-            margin: 0 auto;
-            display:flex;
-            gap:12px;
-        }
+    .ptc{
+      font-weight: 800;
+      font-size: 15px;
+    }
 
-        /* кнопка темы справа */
-        .btn-theme{
-            position: absolute;
-            right: 0;
-            height:26px;
-            padding:0 10px;
-            border-radius:6px;
-            border:1px solid var(--line);
-            background:transparent;
-            color:var(--text);
-            cursor:pointer;
-            font-size:13px;
-        }
-        .btn-theme:hover{
-            background: rgba(0,0,0,0.06);
-        }
-        body.dark .btn-theme:hover{
-            background: rgba(255,255,255,0.08);
-        }
+    .val{
+      font-size: 15px;
+      text-align:right;
+      justify-self:end;
+      font-variant-numeric: tabular-nums;
+    }
+    .val a{
+      display:block;
+      text-align: inherit;
+    }
 
-        /* ===== TOP BAR (как navbar у графика) ===== */
-        .toolbar{
-            background: var(--nav-bg);
-            padding: 10px 12px;
-            border-radius: 10px;
-            margin: 6px 0 12px;        /* оставляем твои отступы логически такими же */
-        }
+    .t2-alert{
+      color: var(--r);
+      font-weight: 900;
+    }
 
-        /* Текст в верхней панели белый, как в графике */
-        .toolbar,
-        .toolbar label{
-            color: rgba(255,255,255,.90);
-        }
+    a{ color: inherit; text-decoration:none; }
+    a:hover{ text-decoration: underline; }
 
-        /* Поля T2 min/max читаемые на цветной шапке */
-        .toolbar input[type="number"]{
-            background:#ffffff;
-            color:#111;
-            border:1px solid rgba(255,255,255,.55);
-        }
-        body.dark .toolbar input[type="number"]{
-            background:#212529;
-            color:#f8f9fa;
-            border:1px solid rgba(255,255,255,.25);
-        }
+    .grid > .card:nth-child(2) .head{ grid-template-columns: 84px 60px 64px 64px; }
+    .grid > .card:nth-child(2) .row{ grid-template-columns: 84px 60px 64px 64px; }
+    .grid > .card:nth-child(2) .pumps{ width:84px; }
 
-        /* ===== SCADA Portal как в графике (outline-light) ===== */
-        .btn{
-            display:inline-flex;
-            align-items:center;
-            justify-content:center;
-            gap:.25rem;
-            text-decoration:none;
-            cursor:pointer;
-            user-select:none;
-            white-space:nowrap;
-        }
+    .grid > .card:nth-child(1) .row:nth-child(4){
+      margin-top: 16px;
+    }
 
-        .btn-sm{
-            height:26px;
-            padding:0 10px;
-            border-radius:6px;
-            font-size:13px;
-            line-height:1;
-        }
+    .sunet-toggle{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      margin-left: 10px;
+      font-weight: 700;
+      cursor:pointer;
+    }
+    .sunet-toggle input{
+      transform: translateY(1px);
+    }
 
-        .btn-outline-light{
-            color:#fff;
-            background:transparent;
-            border:1px solid rgba(255,255,255,.85);
-        }
+    .sound-overlay{
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,.45);
+      z-index: 9999;
+      padding: 20px;
+    }
+    .sound-overlay.show{ display:flex; }
+    .sound-overlay .box{
+      width: min(520px, 92vw);
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      text-align: center;
+    }
+    .sound-overlay .box h3{
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+    .sound-overlay .box p{
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.3;
+    }
+    .sound-overlay .box button{
+      height: 38px;
+      padding: 0 14px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      cursor: pointer;
+      font-weight: 800;
+      background: #fff;
+    }
+    body.dark .sound-overlay .box button{
+      background: #212529;
+      color: #fff;
+      border-color: rgba(255,255,255,.25);
+    }
 
-        .btn-outline-light:hover{
-            background:#fff;
-            color:#111;
-            text-decoration:none;
-        }
+    /* ===== ЛЕГЕНДА (внутри первой карточки снизу) ===== */
+    .legend-box{
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.7);
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    body.dark .legend-box{
+      background: rgba(0,0,0,0.25);
+    }
+    .legend-title{
+      font-weight: 900;
+      margin-bottom: 6px;
+    }
+    .legend-row{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 0;
+    }
+    .legend-dot{
+      width: 14px;
+      height: 14px;
+      border: 1px solid #222;
+      border-radius: 50%;
+      display: inline-block;
+      flex: 0 0 14px;
+    }
+    .legend-dot.red{ background: var(--r); }
+    .legend-dot.green{ background: var(--g); }
+    .legend-dot.yellow{ background: var(--y); }
+    .legend-dot.square{ border-radius: 2px; opacity: .75; }
+    .legend-sep{
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 8px 0;
+    }
 
-        /* ===== Кнопка темы справа — тоже как outline-light ===== */
-        .btn-theme{
-            border:1px solid rgba(255,255,255,.85) !important;
-            color:#fff !important;
-            background:transparent !important;
-        }
+    /* ===== ФУТЕР (внизу экрана слева) ===== */
+.page-footer{
+  position: fixed;
+  left: 8px;
+  bottom: 6px;
+  z-index: 9999;
 
-        .btn-theme:hover{
-            background: rgba(255,255,255,0.15) !important;
-        }
-    </style>
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--muted);
+
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--line);
+
+  user-select: none;
+  pointer-events: none; /* чтобы не мешал кликам */
+}
+
+body.dark .page-footer{
+  background: rgba(0,0,0,0.25);
+}
+
+
+  </style>
 </head>
 
 <body>
 
-<div class="toolbar">
-
-    <!-- СЛЕВА: SCADA Portal -->
+  <div class="toolbar">
     <div class="left-tools d-flex align-items-center gap-2">
-        <a href="http://10.1.1.248:1010/"
-           class="btn btn-outline-light btn-sm"
-           target="_blank"
-           rel="noopener">
-            SCADA Portal
-        </a>
+      <a href="http://10.1.1.248:1010/"
+         class="btn btn-outline-light btn-sm"
+         target="_blank"
+         rel="noopener">
+        SCADA Portal
+      </a>
     </div>
 
-    <!-- ЦЕНТР: T2 min / max -->
     <div class="t2-controls">
-        <label>T2 min <input id="t2min" type="number" value="10"></label>
-        <label>T2 max <input id="t2max" type="number" value="55"></label>
+      <label>T2 min <input id="t2min" type="number" value="10"></label>
+      <label>T2 max <input id="t2max" type="number" value="55"></label>
+
+      <label class="sunet-toggle" title="Sunet pentru toate pompele">
+        <input id="sunetToggle" type="checkbox" checked>
+        Sunet
+      </label>
     </div>
 
-    <!-- СПРАВА: тема -->
     <button id="btn-theme" class="btn-theme" title="Temă">☀️/🌙</button>
+  </div>
 
-</div>
+  <div class="grid" id="grid"></div>
 
-<div class="grid" id="grid"></div>
+  <audio id="alarm-audio" preload="auto" loop playsinline src="{% static 'sonor.wav' %}"></audio>
 
-<!-- Alarm audio (loop). В Django /static/sonor.mp3 должен отдаваться через STATIC_URL -->
-<audio id="alarm-audio" preload="auto" loop src="{% static 'sonor.wav' %}"></audio>
+  <div id="soundOverlay" class="sound-overlay">
+    <div class="box">
+      <h3>🔊 Нужно разрешить звук</h3>
+      <p>
+        Браузер блокирует автозапуск звука при первом открытии страницы.<br>
+        Нажми кнопку один раз — и дальше сирена будет включаться автоматически.
+      </p>
+      <button id="btnEnableSound">🔊 Включить звук</button>
+    </div>
+  </div>
 
-
-<script>
+  <script>
     const grid = document.getElementById("grid");
     const t2minEl = document.getElementById("t2min");
     const t2maxEl = document.getElementById("t2max");
     const themeBtn = document.getElementById("btn-theme");
+    const sunetToggle = document.getElementById("sunetToggle");
 
-    // ===== Persist armed state (как во втором приложении) =====
-    const LS_ARMED = 'ui.pumps.armed';
+    const soundOverlay = document.getElementById("soundOverlay");
+    const btnEnableSound = document.getElementById("btnEnableSound");
 
-    function loadArmedFromLS(){
+    const LS_SUNET_GLOBAL = "ui.pumps.sunet.global";
+    const LS_SUNET_OFF = "ui.pumps.sunet.off";
+    const LS_AUDIO_UNLOCKED = "ui.pumps.audio.unlocked";
+
+    // ✅ Подсказки для помп (tooltip): PTC -> {номер_помпы: [теги]}
+    const PUMP_TIPS = {
+      "1012": { 1: ["CONVERTIZOR"] },
+      "1018": { 1: ["CONVERTIZOR"] },
+      "2009": { 2: ["CONVERTIZOR"] },
+      "2055": { 2: ["CONVERTIZOR"], 3: ["CONVERTIZOR"] },
+      "2056": { 2: ["CONVERTIZOR"] },
+      "2057": { 2: ["CONVERTIZOR"] },
+      "2113": { 1: ["CONVERTIZOR"] },
+      "2201": { 2: ["CONVERTIZOR"] },
+      "2202": { 2: ["CONVERTIZOR"], 3: ["CONVERTIZOR"] },
+      "2209": { 1: ["CONVERTIZOR"] },
+      "2216": { 2: ["CONVERTIZOR"] },
+      "2407": { 1: ["CONVERTIZOR"] },
+
+      "3001": { 1: ["CONVERTIZOR"] },
+      "3002": { 1: ["CONVERTIZOR"] },
+      "3003": { 1: ["CONVERTIZOR"] },
+      "3004": { 1: ["CONVERTIZOR"] },
+      "3005": { 1: ["CONVERTIZOR"] },
+      "3012": { 2: ["CONVERTIZOR"] },
+      "3013": { 1: ["CONVERTIZOR"] },
+      "3025": { 1: ["CONVERTIZOR", "MCE"] },
+      "3038": { 1: ["CONVERTIZOR"] },
+      "3043": { 1: ["CONVERTIZOR"] },
+      "3054": { 1: ["CONVERTIZOR"] },
+      "3064": { 1: ["CONVERTIZOR"] },
+      "3083": { 1: ["CONVERTIZOR"] },
+      "3107": { 1: ["CONVERTIZOR", "MCE"] },
+      "3111": { 1: ["CONVERTIZOR"] },
+      "3118": { 1: ["CONVERTIZOR"] },
+      "3125": { 1: ["CONVERTIZOR", "MCE"], 2: ["CONVERTIZOR", "MCE"], 3: ["CONVERTIZOR", "MCE"] },
+      "3127": { 1: ["CONVERTIZOR", "MCE"] },
+
+      "4009": { 2: ["CONVERTIZOR"] },
+      "4012": { 2: ["CONVERTIZOR"] },
+      "4014": { 2: ["CONVERTIZOR"] },
+      "4016": { 2: ["CONVERTIZOR"] },
+      "4018": { 1: ["CONVERTIZOR"] },
+      "4019": { 2: ["CONVERTIZOR"] },
+      "4021": { 2: ["FLUXOSTAT"] },
+      "4025": { 2: ["CONVERTIZOR"] },
+      "4027": { 2: ["CONVERTIZOR"] },
+      "4037": { 2: ["CONVERTIZOR"] },
+      "4040": { 2: ["CONVERTIZOR"] },
+      "4041": { 2: ["CONVERTIZOR"] },
+      "4044": { 1: ["CONVERTIZOR"] },
+      "4050": { 2: ["CONVERTIZOR"] },
+      "4054": { 2: ["CONVERTIZOR"] },
+      "4058": { 2: ["FLUXOSTAT"] },
+      "4063": { 2: ["FLUXOSTAT"] },
+      "4065": { 2: ["FLUXOSTAT"] },
+      "4066": { 2: ["CONVERTIZOR"] },
+      "4068": { 2: ["CONVERTIZOR"] },
+      "4077": { 2: ["CONVERTIZOR"] },
+
+      "5002": { 2: ["CONVERTIZOR", "MCE"] },
+      "5003": { 2: ["CONVERTIZOR", "MCE"] },
+      "5008": { 2: ["CONVERTIZOR"] },
+      "5009": { 2: ["CONVERTIZOR", "FLUXOSTAT", "MCE"] },
+      "5012": { 1: ["CONVERTIZOR"] },
+      "5013": { 1: ["CONVERTIZOR", "MCE"] },
+      "5014": { 2: ["CONVERTIZOR"] },
+      "5019": { 2: ["CONVERTIZOR", "FLUXOSTAT", "MCE"] },
+      "5023": { 1: ["CONVERTIZOR"] },
+      "5043": { 1: ["CONVERTIZOR", "MCE"] },
+      "5047": { 2: ["CONVERTIZOR"] },
+      "5051": { 1: ["CONVERTIZOR", "FLUXOSTAT"] },
+      "5057": { 2: ["CONVERTIZOR"] },
+      "5058": { 2: ["CONVERTIZOR"] },
+      "5075": { 2: ["CONVERTIZOR"] }
+    };
+
+    function getPumpTip(ptc, pumpNum){
+      const p = String(ptc ?? "").trim();
+      const n = Number(pumpNum);
+      const tags = (PUMP_TIPS[p] && PUMP_TIPS[p][n]) ? PUMP_TIPS[p][n] : null;
+      if (!tags || !Array.isArray(tags) || tags.length === 0) return "";
+      return tags.join("/");
+    }
+
+    function loadOffFromLS(){
+      const raw = localStorage.getItem(LS_SUNET_OFF);
+      if (raw === null) return new Set();
       try{
-        const arr = JSON.parse(localStorage.getItem(LS_ARMED) || '[]');
+        const arr = JSON.parse(raw);
         return new Set(Array.isArray(arr) ? arr : []);
       }catch{
         return new Set();
       }
     }
 
-    function saveArmedToLS(set){
-      try{
-        localStorage.setItem(LS_ARMED, JSON.stringify([...set]));
-      }catch{}
+    function saveOffToLS(set){
+      try{ localStorage.setItem(LS_SUNET_OFF, JSON.stringify([...set])); }catch{}
     }
 
-    const armedPumpKeys = loadArmedFromLS();
+    function loadGlobalFromLS(){
+      const raw = localStorage.getItem(LS_SUNET_GLOBAL);
+      if (raw === null) return true;
+      return raw === "1";
+    }
+
+    function saveGlobalToLS(v){
+      try{ localStorage.setItem(LS_SUNET_GLOBAL, v ? "1" : "0"); }catch{}
+    }
+
+    function loadUnlockedFromLS(){
+      return localStorage.getItem(LS_AUDIO_UNLOCKED) === "1";
+    }
+
+    function saveUnlockedToLS(v){
+      try{ localStorage.setItem(LS_AUDIO_UNLOCKED, v ? "1" : "0"); }catch{}
+    }
+
+    let globalSoundEnabled = loadGlobalFromLS();
+    const offPumpKeys = loadOffFromLS();
 
     function pumpKey(ptc, pidx){
-      return `${String(ptc ?? 'unknown')}:${String(pidx ?? '0')}`;
+      return `${String(ptc ?? "unknown")}:${String(pidx ?? "0")}`;
     }
 
-    // ===== ALARM: как во 2-м приложении (старт ТОЛЬКО от ПКМ по красному) =====
-    const alarmAudio = document.getElementById('alarm-audio');
+    function pumpVisualOnForKey(key){
+      return !offPumpKeys.has(key);
+    }
+
+    const alarmAudio = document.getElementById("alarm-audio");
     alarmAudio.volume = 0.8;
+    alarmAudio.playbackRate = 0.9;
 
     let alarmPlaying = false;
+    let audioUnlocked = loadUnlockedFromLS();
 
-    function hasAnyArmedRed(){
-      // проверяем DOM: есть ли хоть один насос armed + красный
-      return !!document.querySelector('.sq.armed.r');
-    }
-
-    function startAlarm(){
-      if (alarmPlaying) return;
-      alarmAudio.play().then(() => {
-        alarmPlaying = true;
-      }).catch(() => {
-        // ПКМ — это user gesture, обычно play() разрешён.
-      });
+    function hasAnyVisualOnRed(){
+      return !!document.querySelector(".sq.sound-on.r");
     }
 
     function stopAlarm(){
@@ -453,27 +585,74 @@
       alarmPlaying = false;
     }
 
-    // ---- theme toggle ----
+    function startAlarm(){
+      if (alarmPlaying) return;
+      if (!globalSoundEnabled) return;
+      if (!hasAnyVisualOnRed()) return;
+
+      if (!audioUnlocked){
+        soundOverlay.classList.add("show");
+        return;
+      }
+
+      alarmAudio.play().then(() => {
+        alarmPlaying = true;
+      }).catch((e) => {
+        console.warn("play blocked:", e);
+        soundOverlay.classList.add("show");
+      });
+    }
+
+    btnEnableSound.addEventListener("click", async () => {
+      try{
+        alarmAudio.muted = true;
+        await alarmAudio.play();
+        alarmAudio.pause();
+        alarmAudio.currentTime = 0;
+        alarmAudio.muted = false;
+
+        audioUnlocked = true;
+        saveUnlockedToLS(true);
+        soundOverlay.classList.remove("show");
+
+        if (globalSoundEnabled && hasAnyVisualOnRed()) startAlarm();
+      }catch(e){
+        console.error("Unlock failed:", e);
+      }
+    });
+
     themeBtn.addEventListener("click", () => {
       document.body.classList.toggle("dark");
       themeBtn.textContent = document.body.classList.contains("dark") ? "☀️" : "🌙";
+    });
+
+    sunetToggle.checked = globalSoundEnabled;
+
+    sunetToggle.addEventListener("change", () => {
+      globalSoundEnabled = !!sunetToggle.checked;
+      saveGlobalToLS(globalSoundEnabled);
+
+      if (!globalSoundEnabled) stopAlarm();
+      else {
+        if (hasAnyVisualOnRed()) startAlarm();
+        else stopAlarm();
+      }
     });
 
     let timerId = null;
     let inFlight = false;
     let lastData = [];
 
-    // ===== ОКРУГЛЕНИЕ ДЛЯ ОТОБРАЖЕНИЯ =====
     function roundInt(x){
       const n = Number(x);
       if (Number.isNaN(n)) return String(x ?? "");
-      return String(Math.round(n));   // T2 -> целое
+      return String(Math.round(n));
     }
 
     function round2(x){
       const n = Number(x);
       if (Number.isNaN(n)) return String(x ?? "");
-      return n.toFixed(2);            // Q -> 2 знака
+      return n.toFixed(2);
     }
 
     function pumpSquareColor(v, isDigital01, lcs){
@@ -510,8 +689,6 @@
       if (n === 3) return row.url_pompa3 || null;
       return null;
     }
-
-    function districtLabel(){ return ""; }
 
     function districtKeyFromPtc(ptc){
       const s = String(ptc ?? "").trim();
@@ -555,60 +732,54 @@
         const isDigital01 = pumps.length > 0 && pumps.every(v => v === 0 || v === 1);
         const lcs = (r.lcs === null || r.lcs === undefined) ? null : Number(r.lcs);
 
-        // ===== Поведение насосов (ПКМ: armed) + ALARM (как во 2-м приложении) =====
         for (let i = 0; i < pumps.length; i++){
           const v = Number(pumps[i]);
           const num = nums[i] ?? null;
-
           const pidx = (num != null) ? Number(num) : (i + 1);
 
-          // LOVATI: в режиме 0/1 рисуем только 0 или 1 (как во втором приложении)
-          if (isDigital01 && !(v === 0 || v === 1)) {
-            continue;
-          }
+          if (isDigital01 && !(v === 0 || v === 1)) continue;
+
+          const key = pumpKey(r.ptc, pidx);
+          const visualOn = pumpVisualOnForKey(key);
 
           const sq = document.createElement("span");
           sq.className = "sq " + pumpSquareColor(v, isDigital01, lcs);
+          sq.setAttribute("data-pump-key", key);
 
-          // ключ насоса = PTC + номер насоса
-          const key = pumpKey(r.ptc, pidx);
+          const tipText = getPumpTip(r.ptc, pidx);
+          if (tipText) sq.title = tipText;
 
-          // применяем armed из localStorage
-          if (armedPumpKeys.has(key)) {
-            sq.classList.add('armed');
-          }
+          sq.classList.toggle("sound-on", visualOn);
+          sq.classList.toggle("sound-off", !visualOn);
 
-          // ПКМ: toggle armed и сохранение + звук (старт только от ПКМ по красному)
           sq.oncontextmenu = (e) => {
             e.preventDefault();
             e.stopPropagation();
 
-            const wasArmed = sq.classList.contains('armed');
+            if (offPumpKeys.has(key)) offPumpKeys.delete(key);
+            else offPumpKeys.add(key);
 
-            if (wasArmed) {
-              // разоружаем
-              sq.classList.remove('armed');
-              armedPumpKeys.delete(key);
-              saveArmedToLS(armedPumpKeys);
+            saveOffToLS(offPumpKeys);
 
-              // если после разоружения больше нет armed+красных — выключаем звук
-              if (!hasAnyArmedRed()) stopAlarm();
+            const nowVisualOn = pumpVisualOnForKey(key);
+            sq.classList.toggle("sound-on", nowVisualOn);
+            sq.classList.toggle("sound-off", !nowVisualOn);
 
-            } else {
-              // вооружаем
-              sq.classList.add('armed');
-              armedPumpKeys.add(key);
-              saveArmedToLS(armedPumpKeys);
-
-              // звук запускается ТОЛЬКО если в момент ПКМ квадрат красный
-              if (sq.classList.contains('r')) startAlarm();
+            if (!globalSoundEnabled) stopAlarm();
+            else {
+              if (hasAnyVisualOnRed()) startAlarm();
+              else stopAlarm();
             }
 
             return false;
           };
 
           const url = num ? pumpUrlByNum(r, Number(num)) : null;
-          pumpsWrap.appendChild(makeLink(sq, url));
+
+          const el = makeLink(sq, url);
+          if (tipText && el && el.tagName === "A") el.title = tipText;
+
+          pumpsWrap.appendChild(el);
         }
 
         const ptcEl = document.createElement("div");
@@ -617,7 +788,7 @@
 
         const t2El = document.createElement("div");
         t2El.className = "val";
-        t2El.appendChild(makeLink(roundInt(r.t2), r.url_t2)); // T2 -> целое
+        t2El.appendChild(makeLink(roundInt(r.t2), r.url_t2));
 
         const t2val = Number(r.t2);
         if (!Number.isNaN(t2val) && !Number.isNaN(t2min) && !Number.isNaN(t2max)) {
@@ -626,7 +797,7 @@
 
         const qEl = document.createElement("div");
         qEl.className = "val";
-        qEl.appendChild(makeLink(round2(r.q1), r.url_q1));    // Q -> 2 знака
+        qEl.appendChild(makeLink(round2(r.q1), r.url_q1));
 
         rowEl.appendChild(pumpsWrap);
         rowEl.appendChild(ptcEl);
@@ -634,7 +805,42 @@
         rowEl.appendChild(qEl);
         card.appendChild(rowEl);
       }
+
       return card;
+    }
+
+    function makeLegendElement(){
+      const legend = document.createElement("div");
+      legend.className = "legend-box";
+      legend.innerHTML = `
+        <div class="legend-title">Informații</div>
+
+        <div class="legend-row"><span class="legend-dot red"></span>
+          POMPA ESTE OPRITĂ (SEMNAL SONOR ESTE PORNIT)
+        </div>
+
+        <div class="legend-row"><span class="legend-dot green"></span>
+          POMPA ESTE PORNITĂ (SEMNAL SONOR ESTE PORNIT)
+        </div>
+
+        <div class="legend-row"><span class="legend-dot yellow"></span>
+          SEMNAL DIN CONTOARE ESTE SLAB SAU LIPSEȘTE
+        </div>
+
+        <div class="legend-row"><span class="legend-dot red square"></span>
+          POMPA ESTE OPRITĂ (SEMNAL SONOR ESTE OPRIT)
+        </div>
+
+        <div class="legend-row"><span class="legend-dot green square"></span>
+          POMPA ESTE PORNITĂ (SEMNAL SONOR ESTE OPRIT)
+        </div>
+
+        <hr class="legend-sep">
+
+        <div class="legend-row">🖱 Click stânga – grafic</div>
+        <div class="legend-row">🖱 Click dreapta – pornește/oprește semnal sonor</div>
+      `;
+      return legend;
     }
 
     function render(data){
@@ -656,10 +862,19 @@
         grid.appendChild(buildCard("", buckets[k]));
       }
 
-      // Важно: мы НЕ включаем звук сами при render().
-      // Старт только от ПКМ по красному (как во втором приложении).
-      // Но если данных обновились и красных armed больше нет — выключим звук.
-      if (!hasAnyArmedRed()) stopAlarm();
+      // ✅ легенда ВНУТРИ первой карточки, чтобы ничего не смещать
+      const firstCard = grid.querySelector(".card");
+      if (firstCard){
+        const old = firstCard.querySelector(".legend-box");
+        if (old) old.remove();
+        firstCard.appendChild(makeLegendElement());
+      }
+
+      if (!globalSoundEnabled) stopAlarm();
+      else {
+        if (hasAnyVisualOnRed()) startAlarm();
+        else stopAlarm();
+      }
     }
 
     async function load(){
@@ -669,6 +884,7 @@
         const url = new URL("/pumps/api/table/", window.location.origin);
         if (t2minEl.value !== "") url.searchParams.set("t2_min", t2minEl.value);
         if (t2maxEl.value !== "") url.searchParams.set("t2_max", t2maxEl.value);
+
         const res = await fetch(url.toString(), { credentials: "same-origin", cache: "no-store" });
         const data = await res.json();
         lastData = Array.isArray(data) ? data : [];
@@ -690,7 +906,8 @@
 
     load();
     startAuto();
-</script>
+  </script>
+<div class="page-footer">© 2025 STIC SCADA Inginer Victor Musteață tel:93-312.</div>
 
 </body>
 </html>

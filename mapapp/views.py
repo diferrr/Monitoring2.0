@@ -15,7 +15,8 @@ from .serializers import BoilerSerializer
 from .Update_Temperatures import (
     get_live_temperature,
     get_live_temperature_boiler,  # добавь импорт!
-    get_all_temperatures
+    get_all_temperatures,
+    get_boiler_onoff
 )
 from .Texterior import get_texterior
 from .limit import calculate_limits, define_color
@@ -58,6 +59,12 @@ class LiveTemperatureBoilerView(APIView):
             })
         except Exception as e:
             return Response({"error": str(e)}, status=500)
+
+
+class BoilerOnOffView(APIView):
+    def get(self, request, param_name):
+        value = get_boiler_onoff(param_name)
+        return Response({"onoff": value})
 
 def exterior_temp(request):
     try:

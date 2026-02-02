@@ -224,6 +224,47 @@ def fetch_temperature(row, sql_fallback):
         'T2': t2
     }
 
+def get_boiler_onoff(param_name: str):
+    """Return 1 if SP pump is ON, 0 if OFF, None if unknown.
+
+    Reads SCADA digital signal code from map_markers_cazan.id_starea_cazan1
+    and fetches its current value via get_scada_value.
+    """
+    name = param_name.lower().replace("pt_", "")
+
+    with connect_mysql() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT 
+                    REPLACE(m.param_name, 'PT_', '') as name,
+                    m.id_starea_cazan1 as onoff_param,
+                    d.address as ip
+                FROM map_markers_cazan m
+                JOIN datasources_http d ON m.datasource_id = d.id
+                WHERE LOWER(REPLACE(m.param_name, 'PT_', '')) = %s
+            """, (name,))
+            row = cursor.fetchone()
+
+    if not row:
+        return None
+
+    ip = row.get('ip')
+    onoff_param = row.get('onoff_param')
+
+    if not ip or not onoff_param:
+        return None
+
+    v = get_scada_value(ip, onoff_param)
+    if v is None:
+        return None
+
+    try:
+        return 1 if float(v) >= 0.5 else 0
+    except Exception:
+        return None
+
+
+
 def get_all_temperatures():
     # 1) Сначала отдаём из кэша
     cached = cache.get(ALL_TEMPS_CACHE_KEY)

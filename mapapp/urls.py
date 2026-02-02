@@ -4,6 +4,7 @@ from .views import (
     map_view,
     LiveTemperatureView,
     LiveTemperatureBoilerView,  # добавлено!
+    BoilerOnOffView,
     exterior_temp,
     TemperatureLimitsAPIView,
     LiveTemperatureBulkView,
@@ -22,6 +23,7 @@ urlpatterns = [
     path('api/pumps/', HeatPumpList.as_view(), name="heat-pump-list"),
     path('api/live_temp/<str:param_name>/', LiveTemperatureView.as_view(), name="live-temp"),
     path('api/live_temp_boiler/<str:param_name>/', LiveTemperatureBoilerView.as_view(), name="live-temp-boiler"),  # <-- новый маршрут
+    path('api/boiler_onoff/<str:param_name>/', BoilerOnOffView.as_view(), name="boiler-onoff"),
     path('api/live_temp_bulk/', LiveTemperatureBulkView.as_view(), name="live-temp-bulk"),
     path('', map_view, name="map"),
     path('api/exterior_temp/', exterior_temp, name='exterior_temp'),

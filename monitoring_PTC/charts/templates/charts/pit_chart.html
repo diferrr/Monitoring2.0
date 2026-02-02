@@ -85,6 +85,32 @@
         .cjs-tooltip .ct-title{ font-size:14px; font-weight:600; margin-bottom:6px; }
         .cjs-tooltip .ct-row{ display:flex; align-items:center; gap:8px; font-size:13px; font-weight:500 }
         .cjs-tooltip .ct-dot{ width:8px; height:8px; border-radius:50%; background:#ef4444; border:1px solid #ef4444 }
+
+                    /* ===============================
+            FULLSCREEN: убрать левую панель
+            (без удаления HTML/JS)
+            =============================== */
+
+        #left-panel,
+        #left-panel-resizer,
+        #hide-btn,
+        #show-btn{
+            display: none !important;
+        }
+
+        #right-content{
+            width: 100% !important;
+            flex: 1 1 auto !important;
+            margin-left: 0 !important;
+        }
+
+                /* если скрипт добавляет content-shifted — отменяем сдвиг */
+        #right-content.content-shifted{
+            margin-left: 0 !important;
+        }
+
+
+
     </style>
 </head>
 <body>
