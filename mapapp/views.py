@@ -7,36 +7,112 @@ from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
 from django.core.cache import cache
 
+# ✅ GeoJSON store (вместо MySQL)
+from .geo_store import get_points, split_pumps_boilers
 
+# ⚠️ Старые импорты моделей/сериализаторов оставляем,
+# но больше НЕ используем, чтобы не ломать структуру проекта.
 from .models import HeatPump
 from .models import Boiler
 from .serializers import HeatPumpSerializer
 from .serializers import BoilerSerializer
+
 from .Update_Temperatures import (
     get_live_temperature,
-    get_live_temperature_boiler,  # добавь импорт!
+    get_live_temperature_boiler,
     get_all_temperatures,
     get_boiler_onoff
 )
 from .Texterior import get_texterior
 from .limit import calculate_limits, define_color
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def _normalize_param_name(name: str) -> str:
+    """
+    Приводим имена к одному виду, чтобы совпадали ключи:
+    'PT_XXX' и 'XXX' и разные регистры.
+    """
+    return (name or "").replace("PT_", "").strip().lower()
+
+
+
 def map_view(request):
     return render(request, "map.html")
 
+
+# =============================================================================
+# 1) /api/pumps/  (раньше было HeatPump.objects.all(), теперь GeoJSON)
+# ВАЖНО: формат ответа сохраняем максимально совместимым с фронтом.
+# =============================================================================
 class HeatPumpList(generics.ListAPIView):
-    queryset = HeatPump.objects.all()
+    # queryset/serializer_class оставляем, чтобы класс выглядел "как раньше",
+    # но переопределяем get() и возвращаем данные из geojson.
+    queryset = HeatPump.objects.none()
     serializer_class = HeatPumpSerializer
 
+    def get(self, request, *args, **kwargs):
+        points = get_points()
+        pumps, _ = split_pumps_boilers(points)
+
+        out = []
+        for i, p in enumerate(pumps, start=1):
+            props = p.props or {}
+
+            out.append({
+                "id": i,
+                "address": p.address,
+                "param_name": p.param_name,
+                "longitude": p.lon,
+                "lat": p.lat,
+                "number_map": props.get("number_map") or 0,
+                "datasource_id": p.datasource_id,
+                "id_T1": props.get("T1"),
+                "id_T2": props.get("T2"),
+                "id_G1": props.get("G1"),
+                "id_dG": props.get("dG"),
+                "type_device": p.type_device,
+            })
+
+        return Response(out)
+
+
+# =============================================================================
+# 2) /api/boilers/  (раньше Boiler.objects.all(), теперь GeoJSON)
+# =============================================================================
 class BoilerListView(APIView):
     def get(self, request):
         try:
-            boilers = Boiler.objects.all()
-            serializer = BoilerSerializer(boilers, many=True)
-            return Response(serializer.data)
+            points = get_points()
+            _, boilers = split_pumps_boilers(points)
+
+            out = []
+            for p in boilers:
+                props = p.props or {}
+
+                out.append({
+                    "address": p.address,
+                    "param_name": p.param_name,
+                    "datasource_id": p.datasource_id,
+                    "id_T1": props.get("T1"),
+                    "id_T2": props.get("T2"),
+                    "name_device": props.get("name_device") or props.get("name_scheme"),
+                    "type_device": p.type_device,
+                    "latitude": p.lat,
+                    "longitude": p.lon,
+                })
+
+            return Response(out)
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
+
+# =============================================================================
+# 3) Температура по одному объекту (НЕ меняем)
+# =============================================================================
 class LiveTemperatureView(APIView):
     def get(self, request, param_name):
         try:
@@ -48,7 +124,8 @@ class LiveTemperatureView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
-# ====== Новый эндпоинт для котельных ======
+
+# ====== Новый эндпоинт для котельных (НЕ меняем) ======
 class LiveTemperatureBoilerView(APIView):
     def get(self, request, param_name):
         try:
@@ -66,6 +143,7 @@ class BoilerOnOffView(APIView):
         value = get_boiler_onoff(param_name)
         return Response({"onoff": value})
 
+
 def exterior_temp(request):
     try:
         temperature = get_texterior()
@@ -74,6 +152,7 @@ def exterior_temp(request):
         return JsonResponse({'temperature': temperature})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
 
 class TemperatureLimitsAPIView(APIView):
     def get(self, request, *args, **kwargs):
@@ -86,19 +165,21 @@ class TemperatureLimitsAPIView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
+
 @method_decorator(cache_page(30), name='dispatch')
 class LiveTemperatureBulkView(APIView):
+    throttle_scope = "bulk"  # важно: в settings.py должен быть DRF throttling по scope bulk
+
     def get(self, request):
         try:
             data = get_all_temperatures()
-            result = {
-                r['name']: {'T1': r['T1'], 'T2': r['T2']}
-                for r in data
-            }
+            result = {r["name"]: {"T1": r["T1"], "T2": r["T2"]} for r in data}
             return Response(result)
-        except Exception as e:
-            print("🔥 Ошибка в LiveTemperatureBulkView:", e)
-            return Response({"error": str(e)}, status=500)
+        except Exception:
+            logger.exception("Ошибка в LiveTemperatureBulkView")
+            return Response({"error": "Internal error"}, status=500)
+
+
 
 class TemperatureColorAPIView(APIView):
     def get(self, request):
@@ -122,30 +203,35 @@ class TemperatureColorAPIView(APIView):
             "limits": limits
         })
 
+
+# =============================================================================
+# 4) /api/pumps-geojson/  (раньше строили по ORM, теперь строим по GeoJSON)
+# Формат ответа тот же: FeatureCollection с T1/T2 (значения)
+# =============================================================================
 def pumps_geojson(request):
-    # 1) Кэшируем целиком GeoJSON (максимально быстро для карты)
-    cache_key = "geojson:pumps:v2"
+    cache_key = "geojson:pumps:v4"
     cached = cache.get(cache_key)
     if cached is not None:
-        return JsonResponse(cached, content_type="application/json")
+        return JsonResponse(cached)
 
-    # 2) Температуры уже кэшируются внутри get_all_temperatures()
+    # Температуры (уже кэшируются внутри get_all_temperatures)
     temp_data = get_all_temperatures()
-    temp_lookup = {d["name"].lower(): d for d in temp_data}
+    temp_lookup = {_normalize_param_name(d.get("name")): d for d in temp_data}
 
-    # 3) ORM: берём только нужные поля + iterator (меньше RAM)
-    qs = HeatPump.objects.values("param_name", "address", "longitude", "lat").iterator(chunk_size=2000)
+    # Точки из geojson
+    points = get_points()
+    pumps, _ = split_pumps_boilers(points)
 
     features = []
-    for pump in qs:
+    for p in pumps:
         try:
-            lon = float(pump["longitude"])
-            lat = float(pump["lat"])
+            lon = float(p.lon)
+            lat = float(p.lat)
         except Exception:
             continue
 
-        pump_name = pump["param_name"].replace("PT_", "").strip().lower()
-        temps = temp_lookup.get(pump_name, {})
+        key = _normalize_param_name(p.param_name)
+        temps = temp_lookup.get(key, {})
         t1 = temps.get("T1")
         t2 = temps.get("T2")
 
@@ -153,8 +239,8 @@ def pumps_geojson(request):
             "type": "Feature",
             "geometry": {"type": "Point", "coordinates": [lon, lat]},
             "properties": {
-                "param_name": pump["param_name"],
-                "address": pump["address"],
+                "param_name": p.param_name,
+                "address": p.address,
                 "T1": t1,
                 "T2": t2,
             },
@@ -162,16 +248,14 @@ def pumps_geojson(request):
 
     geojson = {"type": "FeatureCollection", "features": features}
     cache.set(cache_key, geojson, 30)
-    return JsonResponse(geojson, content_type="application/json")
+    return JsonResponse(geojson)
 
 
 
 def get_ip(request):
-    # IP клиента
     ip = request.META.get("HTTP_X_FORWARDED_FOR")
     if ip:
         ip = ip.split(",")[0].strip()
     else:
         ip = request.META.get("REMOTE_ADDR")
     return JsonResponse({"ip": ip})
-
