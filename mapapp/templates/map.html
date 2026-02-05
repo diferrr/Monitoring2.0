@@ -160,17 +160,15 @@
             position: fixed;
             left: 10px;
             bottom: 8px;
-            z-index: 1005; /* выше карты */
+            z-index: 1005;
             font-size: 12px;
             color: #eee;
             background: rgba(0, 0, 0, 0.45);
             padding: 4px 8px;
             border-radius: 6px;
-            pointer-events: none; /* не мешает кликам по карте */
+            pointer-events: none;
             user-select: none;
         }
-
-
     </style>
 </head>
 
@@ -221,7 +219,6 @@
 <div id="map"></div>
 
 <script>
-    // ---------- helpers (без jQuery) ----------
     const $ = (sel, root = document) => root.querySelector(sel);
     const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
@@ -243,9 +240,8 @@
         popup.setContent(content).update();
     }
 
-    // ---------- tiny fetch cache (ускорение) ----------
-    const FETCH_CACHE_TTL_MS = 5000; // 5 секунд
-    const fetchCache = new Map(); // url -> { t: number, data: any }
+    const FETCH_CACHE_TTL_MS = 5000;
+    const fetchCache = new Map();
 
     function fetchJsonCached(url, ttlMs = FETCH_CACHE_TTL_MS) {
         const now = Date.now();
@@ -260,7 +256,6 @@
             });
     }
 
-    // ---------- MAP ----------
     const map = L.map("map", { maxZoom: 20 }).setView([47.01, 28.86], 12);
     const DETAILS_ZOOM = 18;
 
@@ -297,13 +292,12 @@
         "Satellite (Esri)": esriSat
     }, null, { position: "topleft" }).addTo(map);
 
-    // ---------- MarkerCluster ----------
     const markers = L.markerClusterGroup({
         maxClusterRadius: 70,
         disableClusteringAtZoom: 17,
     });
 
-    const pumpMarkers = {}; // key(normalized) -> marker
+    const pumpMarkers = {};
     const iconCache = {};
 
     const PUMP_FONT_PX = 12;
@@ -375,7 +369,7 @@
         if (Date.now() - lastBulkUpdate < 10000) return;
         lastBulkUpdate = Date.now();
 
-        fetchJsonCached("/api/live_temp_bulk/", 3000)
+        fetchJsonCached("api/live_temp_bulk/", 3000)
             .then((data) => {
                 Object.entries(pumpMarkers).forEach(([key, marker]) => {
                     const temps = data[key];
@@ -393,7 +387,7 @@
     }
 
     function fetchExteriorTemp() {
-        fetchJsonCached("/api/temperature_limits", 5000)
+        fetchJsonCached("api/temperature_limits/", 5000)
             .then((data) => {
                 limits = data;
                 updateMarkersColors();
@@ -410,7 +404,7 @@
         if (pumpsLoaded) return;
         pumpsLoaded = true;
 
-        fetch("/api/pumps/")
+        fetch("api/pumps/")
             .then((res) => res.json())
             .then((data) => {
                 data.forEach((pump) => {
@@ -430,7 +424,7 @@
                     );
 
                     marker.on("click", () => {
-                        fetchJsonCached(`/api/live_temp/${encodeURIComponent(pump.param_name)}/`, 3000)
+                        fetchJsonCached(`api/live_temp/${encodeURIComponent(pump.param_name)}/`, 3000)
                             .then((d) => {
                                 const t1Live = (d.T1 == null || isNaN(d.T1)) ? "N" : d.T1;
                                 const t2Live = (d.T2 == null || isNaN(d.T2)) ? "N" : d.T2;
@@ -451,7 +445,6 @@
             .catch((e) => console.error("Ошибка загрузки pumps:", e));
     }
 
-    // ---------- Boilers ----------
     const boilerLayer = L.layerGroup().addTo(map);
     const spMarkersByParam = {};
     let spLastUpdate = 0;
@@ -479,13 +472,13 @@
         spLastUpdate = now;
 
         Object.entries(spMarkersByParam).forEach(([param, marker]) => {
-            fetchJsonCached(`/api/boiler_onoff/${encodeURIComponent(param)}/`, 3000)
+            fetchJsonCached(`api/boiler_onoff/${encodeURIComponent(param)}/`, 3000)
                 .then(d => applySPState(marker, d.onoff))
                 .catch(() => {});
         });
     }
 
-    fetch("/api/boilers/")
+    fetch("api/boilers/")
         .then((res) => res.json())
         .then((data) => {
             data.forEach((boiler) => {
@@ -531,7 +524,7 @@
                 `);
 
                 marker.on("click", () => {
-                    fetchJsonCached(`/api/live_temp_boiler/${encodeURIComponent(boiler.param_name)}/`, 3000)
+                    fetchJsonCached(`api/live_temp_boiler/${encodeURIComponent(boiler.param_name)}/`, 3000)
                         .then((d) => {
                             const t1Live = (d.T1 == null || isNaN(d.T1)) ? "N" : d.T1;
                             const t2Live = (d.T2 == null || isNaN(d.T2)) ? "N" : d.T2;
@@ -540,7 +533,7 @@
                         .catch(() => {});
 
                     if (!isDISP && !isCET) {
-                        fetchJsonCached(`/api/boiler_onoff/${encodeURIComponent(boiler.param_name)}/`, 3000)
+                        fetchJsonCached(`api/boiler_onoff/${encodeURIComponent(boiler.param_name)}/`, 3000)
                             .then(d => applySPState(marker, d.onoff))
                             .catch(() => {});
                     }
@@ -551,7 +544,7 @@
                 if (!isDISP && !isCET) {
                     spMarkersByParam[boiler.param_name] = marker;
                     marker.on("add", () => {
-                        fetchJsonCached(`/api/boiler_onoff/${encodeURIComponent(boiler.param_name)}/`, 3000)
+                        fetchJsonCached(`api/boiler_onoff/${encodeURIComponent(boiler.param_name)}/`, 3000)
                             .then(d => applySPState(marker, d.onoff))
                             .catch(() => {});
                     });
@@ -563,7 +556,6 @@
         })
         .catch((e) => console.error("Ошибка загрузки boilers:", e));
 
-    // ---------- Fullscreen ----------
     (function() {
         if (L && (L.Control && (L.Control.Fullscreen || L.Control.FullScreen))) {
             if (L.Control.Fullscreen) map.addControl(new L.Control.Fullscreen());
@@ -601,7 +593,6 @@
         }
     })();
 
-    // ---------- Sector polygons ----------
     const sectorPolygons = {};
     Object.entries(sectors).forEach(([sectorName, sectorData]) => {
         const polygon = L.polygon(sectorData.latlng, {
@@ -613,7 +604,6 @@
         polygon.addTo(map);
     });
 
-    // ---------- Lazy load by zoom (debounce) ----------
     let zoomTimer = null;
     function handleZoom() {
         const z = map.getZoom();
@@ -644,7 +634,6 @@
         zoomTimer = setTimeout(handleZoom, 80);
     });
 
-    // ---------- Search / UI ----------
     function saveSearchQuery(query) {
         if (!query) return;
         const history = JSON.parse(localStorage.getItem("searchHistory")) || [];
@@ -718,7 +707,6 @@
         box.addEventListener("mouseleave", () => tooltip.classList.add("hidden"));
     });
 
-    // ---------- Sector buttons ----------
     const sectorButtonColors = { 1:"red", 2:"purple", 3:"green", 4:"orange", 6:"blue", 0:"white" };
 
     $$("#sector-buttons button").forEach((button) => {
@@ -755,7 +743,6 @@
         });
     });
 
-    // ---------- Status filter ----------
     const filterIcons = $$(".filter-icon");
     const statusList = document.getElementById("status-list");
 
@@ -808,7 +795,6 @@
         });
     });
 
-    // ---------- GeoJSON layers (lazy) ----------
     function fetchAndRenderPipelines() {
         if (pipelinesLoaded) return;
         pipelinesLoaded = true;
@@ -833,7 +819,7 @@
         if (zadviscaLoaded) return;
         zadviscaLoaded = true;
 
-        fetch("/static/data/zadvisca.geojson")
+        fetch("{% static 'data/zadvisca.geojson' %}")
             .then((response) => response.json())
             .then((geojson) => {
                 zadviscaLayer = L.geoJSON(geojson, {
@@ -859,8 +845,10 @@
             .catch((e) => console.error(e));
     }
 
-    fetch("/api/get_ip/").then((r) => r.json()).then((d) => console.log("IP:", d.ip)).catch(() => {});
+    // Было /api/get_ip/ -> стало api/get_ip/ (чтобы работало под /harta/)
+    fetch("api/get_ip/").then((r) => r.json()).then((d) => console.log("IP:", d.ip)).catch(() => {});
 </script>
+
 <div class="footer">
     © 2026 STIC SCADA — Inginer Victor Musteață · tel: 93-312
 </div>
