@@ -1,133 +1,570 @@
 <!DOCTYPE html>
 <html lang="ro">
 <head>
-    <meta charset="UTF-8">
-    <title>Excluderi — {{ ptc }}</title>
-    <style>
-        body {
-          font-family: system-ui, sans-serif;
-          background: #fafbff;
-          margin: 30px;
-        }
-        h1 { color: #222; font-size: 22px; }
-        h2 { color: #444; font-size: 16px; margin-top: 20px; }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 12px;
-          background: #fff;
-        }
-        th, td {
-          border: 1px solid #ddd;
-          padding: 6px 10px;
-          text-align: left;
-          font-size: 14px;
-        }
-        th {
-          background: #f0f3ff;
-          color: #1c266d;
-        }
-        input, select, textarea, button {
-          padding: 6px;
-          border: 1px solid #ccc;
-          border-radius: 4px;
-          font-size: 14px;
-        }
-        button {
-          background: #4e73ff;
-          color: white;
-          border: none;
-          cursor: pointer;
-          border-radius: 6px;
-          padding: 6px 14px;
-        }
-        button:hover {
-          background: #395bdb;
-        }
-        .inline { display: inline-block; margin-right: 8px; }
-        .note { color: #888; margin-top: 10px; font-size: 13px; }
-    </style>
-</head>
-<body>
-<h1>PTC {{ ptc }} — Excluderi</h1>
+  <meta charset="UTF-8">
+  <title>Excluderi — {{ ptc }}</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #fafbff;
+      margin: 30px;
+    }
+    h1 { color: #222; font-size: 22px; }
+    h2 { color: #444; font-size: 16px; margin-top: 20px; }
 
-<h2>Adaugă excludere</h2>
-<form method="post">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="add">
-    <div class="inline">
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      background: #fff;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 6px 10px;
+      text-align: left;
+      font-size: 14px;
+    }
+    th {
+      background: #f0f3ff;
+      color: #1c266d;
+    }
+
+    input, select, textarea, button {
+      padding: 6px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    button {
+      background: #4e73ff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 6px;
+      padding: 6px 14px;
+    }
+    button:hover { background: #395bdb; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+
+    .inline { display: inline-block; margin-right: 10px; margin-bottom: 10px; vertical-align: top; }
+    .note { color: #888; margin-top: 10px; font-size: 13px; }
+    .section {
+      background: #fff;
+      border: 1px solid #e8ecff;
+      border-radius: 10px;
+      padding: 14px;
+      margin-top: 10px;
+    }
+    .divider { height: 1px; background: #e8ecff; margin: 18px 0; }
+
+    .checks {
+      max-height: 240px;
+      overflow: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfcff;
+      min-width: 260px;
+    }
+    .checks .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 3px 2px;
+    }
+    .checks .row label { cursor: pointer; user-select: none; }
+
+    .muted { color: #6b7280; font-size: 13px; margin-top: 6px; }
+    .status { margin-top: 10px; font-size: 13px; color: #111827; }
+    .status.ok { color: #065f46; }
+    .status.err { color: #b91c1c; }
+
+    .grid {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+    .box {
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px;
+      background: #fcfdff;
+    }
+    .field { margin-bottom: 8px; }
+    .field label { display: inline-block; min-width: 140px; }
+    .kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 2px 6px;
+    }
+    .mini-btn {
+      background: #eef2ff;
+      color: #1f2937;
+      border: 1px solid #dbeafe;
+      padding: 5px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .mini-btn:hover { background: #e0e7ff; }
+    .mini-btn.danger {
+      background: #fee2e2;
+      border-color: #fecaca;
+      color: #991b1b;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>PTC {{ ptc }} — Excluderi temporare</h1>
+
+  <!-- Excluderi temporare (NU atingem logica) -->
+  <div class="section">
+    <h2>Adaugă excludere</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add">
+
+      <div class="inline">
         <label>Parametru:</label>
         <select name="param" required>
-            {% for p in params %}
+          {% for p in params %}
             <option value="{{ p }}">{{ p }}</option>
-            {% endfor %}
+          {% endfor %}
         </select>
-    </div>
-    <!-- Fields to specify the start and end of exclusion period -->
-    <div class="inline">
-        <label>De la:</label>
-        <!-- Start of the exclusion period; using datetime-local to allow date and time -->
-        <input type="datetime-local" name="start" required>
-    </div>
-    <div class="inline">
-        <label>Până la:</label>
-        <!-- End of the exclusion period; using datetime-local and no default value -->
-        <input type="datetime-local" name="end" required>
-    </div>
+      </div>
 
-    <div class="inline">
+      <div class="inline">
+        <label>De la:</label>
+        <input type="datetime-local" name="start" required>
+      </div>
+
+      <div class="inline">
+        <label>Până la:</label>
+        <input type="datetime-local" name="end" required>
+      </div>
+
+      <div class="inline">
         <label>Tură:</label>
         <select name="tura">
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
         </select>
-    </div>
-    <div class="inline">
+      </div>
+
+      <div class="inline">
         <label>Cauza:</label>
         <input type="text" name="reason">
-    </div>
-    <button type="submit">Adaugă</button>
-</form>
+      </div>
 
-<h2>Parametri excluși</h2>
-{% if exclusions %}
-<table>
-    <tr>
-        <th>#</th>
-        <th>Parametru</th>
-        <th>De la</th>
-        <th>Până la</th>
-        <th>Tură</th>
-        <th>Cauza</th>
-        <th>Timp adăugare</th>
-        <th>Șterge</th>
-    </tr>
-    {% for e in exclusions %}
-    <tr>
-        <td>{{ forloop.counter }}</td>
-        <td>{{ e.param }}</td>
-        <td>{{ e.start|default:'' }}</td>
-        <td>{{ e.end|default:e.until }}</td>
-        <td>{{ e.tura }}</td>
-        <td>{{ e.reason }}</td>
-        <td>{{ e.ts }}</td>
-        <td>
-            <form method="post" style="display:inline">
+      <button type="submit" {% if not can_edit %}disabled{% endif %}>Adaugă</button>
+      {% if not can_edit %}
+        <div class="muted">(Editarea e blocată pentru IP-ul tău)</div>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="section">
+    <h2>Parametri excluși (temporar)</h2>
+    {% if exclusions %}
+      <table>
+        <tr>
+          <th>#</th>
+          <th>Parametru</th>
+          <th>De la</th>
+          <th>Până la</th>
+          <th>Tură</th>
+          <th>Cauza</th>
+          <th>Timp adăugare</th>
+          <th>Șterge</th>
+        </tr>
+        {% for e in exclusions %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ e.param }}</td>
+            <td>{{ e.start|default:'' }}</td>
+            <td>{{ e.end|default:e.until }}</td>
+            <td>{{ e.tura }}</td>
+            <td>{{ e.reason }}</td>
+            <td>{{ e.ts }}</td>
+            <td>
+              <form method="post" style="display:inline">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete">
-                <input type="hidden" name="index" value="{{ forloop.counter0 }}">
-                <button type="submit">×</button>
-            </form>
-        </td>
-    </tr>
-    {% endfor %}
-</table>
-{% else %}
-<p class="note">Nu există parametri excluși pentru acest PTC.</p>
-{% endif %}
+                <input type="hidden" name="index" value="{{ e.idx }}">
+                <button type="submit" {% if not can_edit %}disabled{% endif %}>×</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </table>
+    {% else %}
+      <p class="note">Nu există excluderi temporare pentru acest PTC.</p>
+    {% endif %}
+  </div>
 
-<p><a href="javascript:history.back()">← Înapoi</a></p>
+  <div class="divider"></div>
+
+  <!-- Excluderi periodice (nou) -->
+  <div class="section">
+    <h2>Excluderi periodice</h2>
+    <div class="muted">
+      Alege o <b>dată de start</b>, <b>Număr de zile (X)</b> și o fereastră de timp
+      <span class="kbd">De la (ora)</span> → <span class="kbd">Până la (ora)</span>.
+      Aceeași fereastră se aplică automat pentru fiecare din cele X zile.
+      <br>
+      În afara ferestrei (înainte de De la / după Până la), alarmele funcționează ca înainte.
+    </div>
+
+    <form id="periodic-form" onsubmit="return false;">
+      {% csrf_token %}
+      <input type="hidden" id="periodic_gid" value="">
+
+      <div class="grid" style="margin-top:10px;">
+        <!-- Col 1: parametri -->
+        <div class="inline box">
+          <div class="field"><label><b>Parametri:</b></label></div>
+          <div class="checks" id="checks-box" style="margin-top:6px;">
+            {% for p in params %}
+              <div class="row">
+                <input type="checkbox" class="param-check" id="p_{{ forloop.counter }}" value="{{ p }}" {% if not can_edit %}disabled{% endif %}>
+                <label for="p_{{ forloop.counter }}">{{ p }}</label>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Col 2: data+ore -->
+        <div class="inline box" style="min-width: 320px;">
+          <div class="field">
+            <label><b>De la (data):</b></label>
+            <input type="date" id="date_from" required {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="field">
+            <label><b>De la (ora):</b></label>
+            <input type="time" id="time_from" required {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="field">
+            <label><b>Până la (ora):</b></label>
+            <input type="time" id="time_to" required {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="muted" id="time-mode-hint"></div>
+        </div>
+
+        <!-- Col 3: X zile + tura/reason + preview -->
+        <div class="inline box" style="min-width: 360px;">
+          <div class="field">
+            <label><b>Număr de zile:</b></label>
+            <input type="number" id="days_count" min="1" max="365" value="1" required style="width: 90px;" {% if not can_edit %}disabled{% endif %}>
+            <span class="muted">(X zile, inclusiv ziua de start)</span>
+          </div>
+
+          <div class="field">
+            <label><b>Până la (data) calculat:</b></label>
+            <input type="text" id="date_to_preview" readonly style="width: 180px; background:#f9fafb;">
+          </div>
+
+          <div class="field">
+            <label><b>Tură:</b></label>
+            <select id="tura_periodic" {% if not can_edit %}disabled{% endif %}>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label><b>Cauza:</b></label>
+            <input type="text" id="reason_periodic" placeholder="" style="width: 200px;" {% if not can_edit %}disabled{% endif %}>
+          </div>
+
+          <div class="field" style="display:flex; gap:8px; align-items:center;">
+            <button type="button" id="btn-save-periodic" {% if not can_edit %}disabled{% endif %}>Adaugă</button>
+            <button type="button" id="btn-cancel-edit" class="mini-btn" style="display:none;">Anulează</button>
+          </div>
+
+          <div class="muted" id="preview-info"></div>
+          <div id="periodic-status" class="status"></div>
+        </div>
+      </div>
+    </form>
+
+    <div class="divider"></div>
+
+    <h2>Excluderi periodice existente (1 rând per set)</h2>
+    {% if periodic_groups %}
+      <table>
+        <tr>
+          <th>#</th>
+          <th>Parametri</th>
+          <th>De la (data)</th>
+          <th>Număr de zile</th>
+          <th>De la (ora)</th>
+          <th>Până la (ora)</th>
+          <th>Tură</th>
+          <th>Cauza</th>
+          <th>Timp adăugare</th>
+          <th>Edit</th>
+          <th>Șterge</th>
+        </tr>
+        {% for g in periodic_groups %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ g.params_display }}</td>
+            <td>{{ g.date_from }}</td>
+            <td>{{ g.days_count }}</td>
+            <td>{{ g.time_from }}</td>
+            <td>{{ g.time_to }}</td>
+            <td>{{ g.tura }}</td>
+            <td>{{ g.reason }}</td>
+            <td>{{ g.ts }}</td>
+            <td>
+              <button
+                type="button"
+                class="mini-btn btn-edit-group"
+                data-gid="{{ g.gid }}"
+                data-params="{{ g.params_csv }}"
+                data-date-from="{{ g.date_from }}"
+                data-days="{{ g.days_count }}"
+                data-time-from="{{ g.time_from }}"
+                data-time-to="{{ g.time_to }}"
+                data-tura="{{ g.tura }}"
+                data-reason="{{ g.reason|default:'' }}"
+                {% if not can_edit %}disabled{% endif %}
+              >Editează</button>
+            </td>
+            <td>
+              <form method="post" style="display:inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_group">
+                <input type="hidden" name="gid" value="{{ g.gid }}">
+                <button type="submit" class="mini-btn danger" {% if not can_edit %}disabled{% endif %}>×</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </table>
+    {% else %}
+      <p class="note">Nu există excluderi periodice pentru acest PTC.</p>
+    {% endif %}
+  </div>
+
+<script>
+(function () {
+  const MAX_TOTAL = 500;
+
+  function pad2(n) { return String(n).padStart(2, "0"); }
+  function ymd(d) { return d.getFullYear() + "-" + pad2(d.getMonth()+1) + "-" + pad2(d.getDate()); }
+  function parseISODate(s) {
+    const [Y,M,D] = s.split("-").map(Number);
+    return new Date(Y, M-1, D);
+  }
+  function addDays(dateObj, days) {
+    const d = new Date(dateObj.getTime());
+    d.setDate(d.getDate() + days);
+    return d;
+  }
+  function formatDateRo(dateObj) {
+    return pad2(dateObj.getDate()) + "." + pad2(dateObj.getMonth()+1) + "." + dateObj.getFullYear();
+  }
+
+  const form = document.getElementById("periodic-form");
+  const statusEl = document.getElementById("periodic-status");
+  const hintEl = document.getElementById("time-mode-hint");
+  const previewInfoEl = document.getElementById("preview-info");
+
+  const checksBox = document.getElementById("checks-box");
+  const gidEl = document.getElementById("periodic_gid");
+  const dateFromEl = document.getElementById("date_from");
+  const daysCountEl = document.getElementById("days_count");
+  const dateToPreviewEl = document.getElementById("date_to_preview");
+  const timeFromEl = document.getElementById("time_from");
+  const timeToEl = document.getElementById("time_to");
+  const turaEl = document.getElementById("tura_periodic");
+  const reasonEl = document.getElementById("reason_periodic");
+  const btnSave = document.getElementById("btn-save-periodic");
+  const btnCancel = document.getElementById("btn-cancel-edit");
+
+  function setStatus(text, cls) {
+    statusEl.textContent = text || "";
+    statusEl.className = "status" + (cls ? (" " + cls) : "");
+  }
+
+  function getSelectedParams() {
+    return Array.from(document.querySelectorAll(".param-check"))
+      .filter(ch => ch.checked)
+      .map(ch => ch.value);
+  }
+
+  function computeDateToPreview() {
+    const dateFromStr = dateFromEl.value;
+    const days = parseInt(daysCountEl.value || "1", 10);
+    if (!dateFromStr || !days || days < 1) {
+      dateToPreviewEl.value = "";
+      return;
+    }
+    const dFrom = parseISODate(dateFromStr);
+    const dTo = addDays(dFrom, days - 1);
+    dateToPreviewEl.value = formatDateRo(dTo);
+  }
+
+  function updateHints() {
+    const tf = timeFromEl.value;
+    const tt = timeToEl.value;
+
+    if (tf && tt) {
+      if (tt > tf) {
+        hintEl.textContent = "✅ Fereastră în aceeași zi (ex: 12:00 → 18:55)";
+      } else {
+        hintEl.textContent = "🌙 Până la <= De la: se consideră peste miezul nopții (ex: 22:00 → 06:00 a doua zi)";
+      }
+    } else {
+      hintEl.textContent = "";
+    }
+
+    const dateFromStr = dateFromEl.value;
+    const days = parseInt(daysCountEl.value || "1", 10);
+    const selected = getSelectedParams().length;
+    if (dateFromStr && days && selected) {
+      const total = selected * days;
+      previewInfoEl.textContent = `Se vor crea: ${total} excluderi (${selected} parametri × ${days} zile). Limită: ${MAX_TOTAL}.`;
+    } else {
+      previewInfoEl.textContent = "";
+    }
+  }
+
+  dateFromEl?.addEventListener("change", () => { computeDateToPreview(); updateHints(); });
+  daysCountEl?.addEventListener("input", () => { computeDateToPreview(); updateHints(); });
+  timeFromEl?.addEventListener("change", updateHints);
+  timeToEl?.addEventListener("change", updateHints);
+  checksBox?.addEventListener("change", updateHints);
+
+  computeDateToPreview();
+  updateHints();
+
+  function clearEditMode() {
+    gidEl.value = "";
+    btnSave.textContent = "Adaugă";
+    btnCancel.style.display = "none";
+    setStatus("", "");
+  }
+
+  btnCancel?.addEventListener("click", () => {
+    // nu resetăm câmpurile complet, doar ieșim din modul edit
+    clearEditMode();
+  });
+
+  async function postPeriodic(payload) {
+    const resp = await fetch(window.location.href, {
+      method: "POST",
+      body: payload,
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    });
+    if (!resp.ok) {
+      const t = await resp.text().catch(() => "");
+      throw new Error("HTTP " + resp.status + (t ? (" — " + t.slice(0, 200)) : ""));
+    }
+    // json optional
+    try { await resp.json(); } catch (e) {}
+  }
+
+  btnSave?.addEventListener("click", async () => {
+    try {
+      setStatus("", "");
+      btnSave.disabled = true;
+
+      const csrf = form.querySelector('input[name="csrfmiddlewaretoken"]')?.value || "";
+      if (!csrf) throw new Error("CSRF token lipsește.");
+
+      const selected = getSelectedParams();
+      if (selected.length === 0) throw new Error("Selectează cel puțin un parametru.");
+
+      const dateFromStr = dateFromEl.value;
+      const days = parseInt(daysCountEl.value || "1", 10);
+      const timeFrom = timeFromEl.value;
+      const timeTo = timeToEl.value;
+
+      if (!dateFromStr) throw new Error("Selectează De la (data)." );
+      if (!days || days < 1) throw new Error("Număr de zile invalid." );
+      if (!timeFrom || !timeTo) throw new Error("Completează De la (ora) și Până la (ora)." );
+
+      const total = selected.length * days;
+      if (total > MAX_TOTAL) throw new Error(`Prea multe excluderi: ${total}. Maxim: ${MAX_TOTAL}.`);
+
+      const tura = turaEl.value || "1";
+      const reason = reasonEl.value || "";
+      const gid = (gidEl.value || "").trim();
+
+      const fd = new FormData();
+      fd.append("csrfmiddlewaretoken", csrf);
+      fd.append("action", gid ? "update_group" : "add_periodic");
+      if (gid) fd.append("gid", gid);
+      fd.append("date_from", dateFromStr);
+      fd.append("days_count", String(days));
+      fd.append("time_from", timeFrom);
+      fd.append("time_to", timeTo);
+      fd.append("tura", tura);
+      fd.append("reason", reason);
+      for (const p of selected) fd.append("param", p);
+
+      setStatus(gid ? "Se actualizează..." : "Se adaugă...", "");
+      await postPeriodic(fd);
+      setStatus("Gata! Reîncarc pagina...", "ok");
+      window.location.reload();
+    } catch (e) {
+      setStatus("Eroare: " + (e?.message || String(e)), "err");
+    } finally {
+      btnSave.disabled = false;
+    }
+  });
+
+  // Editare grup → umple formularul
+  document.querySelectorAll(".btn-edit-group").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const gid = btn.dataset.gid || "";
+      const paramsCsv = btn.dataset.params || "";
+      const dateFrom = btn.dataset.dateFrom || "";
+      const days = btn.dataset.days || "1";
+      const timeFrom = btn.dataset.timeFrom || "";
+      const timeTo = btn.dataset.timeTo || "";
+      const tura = btn.dataset.tura || "1";
+      const reason = btn.dataset.reason || "";
+
+      // set fields
+      gidEl.value = gid;
+      btnSave.textContent = "Actualizează";
+      btnCancel.style.display = "inline-block";
+      dateFromEl.value = dateFrom;
+      daysCountEl.value = days;
+      timeFromEl.value = timeFrom;
+      timeToEl.value = timeTo;
+      turaEl.value = tura;
+      reasonEl.value = reason;
+
+      // clear all checks then set selected
+      const wanted = paramsCsv.split(",").map(s => s.trim()).filter(Boolean);
+      document.querySelectorAll(".param-check").forEach(ch => {
+        ch.checked = wanted.includes(ch.value);
+      });
+
+      computeDateToPreview();
+      updateHints();
+      setStatus("Mod editare: schimbă câmpurile și apasă Actualizează.", "ok");
+      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    });
+  });
+
+  // Dacă user navighează / reîncarcă, ieșim din edit
+  window.addEventListener("pageshow", clearEditMode);
+})();
+</script>
+
 </body>
 </html>

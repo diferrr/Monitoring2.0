@@ -5,18 +5,15 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="18f502a2-0491-4113-9d9d-76a5025241e7" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/mapapp/geo_store.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mapapp/static/data/acb.geojson" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mapapp/static/data/network_v2.geojson" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ZAPUSK" beforeDir="false" afterPath="$PROJECT_DIR$/ZAPUSK" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/config/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/config/settings.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/db.sqlite3" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mapapp/Update_Temperatures.py" beforeDir="false" afterPath="$PROJECT_DIR$/mapapp/Update_Temperatures.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mapapp/static/data/vitiku.geojson" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/mapapp/templates/map.html" beforeDir="false" afterPath="$PROJECT_DIR$/mapapp/templates/map.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mapapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/mapapp/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/monitoring/templates/monitoring/exclude_page.html" beforeDir="false" afterPath="$PROJECT_DIR$/monitoring/templates/monitoring/exclude_page.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/monitoring/templates/monitoring/ptc_table.html" beforeDir="false" afterPath="$PROJECT_DIR$/monitoring/templates/monitoring/ptc_table.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pumps/templates/pumps/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/pumps/templates/pumps/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/monitoring/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/monitoring/views.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -49,11 +46,12 @@
     &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/monitoring_PTC&quot;
+    &quot;last_opened_file_path&quot;: &quot;D:/monitoring_PTC/mapapp/static/data&quot;
   }
 }</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\monitoring_PTC\mapapp\static\data" />
       <recent name="D:\monitoring_PTC" />
     </key>
   </component>

@@ -707,9 +707,10 @@
 
         a.ptc-link {
             color: var(--text) !important;
-            text-decoration: underline !important;
-            font-size: 17px
+            text-decoration: none !important;
+            font-size: 17px;
         }
+
 
         th.sortable {
             cursor: pointer;
@@ -1052,7 +1053,13 @@
         <div class="sidebar-header"><h2>SETĂRI</h2></div>
         <div class="sidebar-body">
             <fieldset class="columns-group">
-                <legend>Coloane PTC</legend>
+                <legend>
+                    <span>Coloane PTC</span>
+                    <label class="cond-master-label" title="Selectează/Deselectează toate coloanele">
+                        <input type="checkbox" id="cols_all">
+                    </label>
+                </legend>
+
                 <div class="columns-list" id="columnsList">
                     <label><input type="checkbox" value="address" checked> Adresa</label>
                     <label><input type="checkbox" value="q1" checked> Q</label>
@@ -1678,6 +1685,8 @@
                   cb.checked = values.includes(cb.value);
               });
               saveCheckedToLS();
+              syncMasterColumnsCheckbox();
+
           }
 
           function saveCheckedToLS() {
@@ -1699,11 +1708,63 @@
                   boxes.forEach(cb => {
                       cb.checked = vals.includes(cb.value);
                   });
+                  syncMasterColumnsCheckbox();
+
                   return true;
               } catch (e) {
                   return false;
               }
           }
+
+          // ===== Columns: master checkbox (ALL) =====
+function getColumnCheckboxes() {
+    return Array.from(document.querySelectorAll('#columnsList input[type="checkbox"]'));
+}
+
+function syncMasterColumnsCheckbox() {
+    const master = document.getElementById('cols_all');
+    if (!master) return;
+
+    const boxes = getColumnCheckboxes();
+    if (!boxes.length) {
+        master.checked = false;
+        master.indeterminate = false;
+        return;
+    }
+
+    const checkedCount = boxes.filter(cb => cb.checked).length;
+    master.checked = (checkedCount === boxes.length);
+    master.indeterminate = (checkedCount > 0 && checkedCount < boxes.length);
+}
+
+(function initColumnsMasterToggle() {
+    const master = document.getElementById('cols_all');
+    if (!master) return;
+
+    // при загрузке
+    syncMasterColumnsCheckbox();
+
+    // клик по master
+    master.addEventListener('change', () => {
+        const boxes = getColumnCheckboxes();
+        boxes.forEach(cb => { cb.checked = master.checked; });
+
+        saveCheckedToLS();
+        buildHeader();
+        rerenderTable();
+        syncMasterColumnsCheckbox();
+    });
+
+    // если меняют любую колонку — обновляем master (полугалка)
+    getColumnCheckboxes().forEach(cb => {
+        cb.addEventListener('change', () => {
+            syncMasterColumnsCheckbox();
+        });
+    });
+})();
+
+
+
 
           function getCurrentSeason() {
               const el = document.querySelector('input[name="season"]:checked');
@@ -2113,9 +2174,9 @@ const excludeStyle = hasExcl
 
 const inner = (window.CAN_EDIT === true)
     ? `<div class="ptc-cell">
-           <a href="${excludeUrl}" target="_blank" class="ptc-btn exclude-btn" title="Исключения"${excludeStyle}>−</a>
+           <a href="${excludeUrl}" target="_blank" class="ptc-btn exclude-btn" title="Excluderi"${excludeStyle}>−</a>
            <a href="${viewUrl}" target="_blank" class="ptc-link">${ptc}</a>
-           <a href="${commentUrl}" target="_blank" class="${commentCls}" title="Комментарии">N</a>
+           <a href="${commentUrl}" target="_blank" class="${commentCls}" title="Comentarii">N</a>
        </div>`
     : `<div class="ptc-cell">
            <a href="${viewUrl}" target="_blank" class="ptc-link">${ptc}</a>
@@ -2127,10 +2188,11 @@ const inner = (window.CAN_EDIT === true)
               }
 
               if (c.key === 'address') {
-                  const url = 'http://10.1.1.248:2222/?obiect=' + encodeURIComponent(row.ptc);
+                  const url = '/harta/?ptc=' + encodeURIComponent(row.ptc);
                   tds.push(`<td data-col="address">${linkOrText(url, row.address || '')}</td>`);
                   return;
               }
+
 
               const colIdKey = 'id_' + c.key;
 

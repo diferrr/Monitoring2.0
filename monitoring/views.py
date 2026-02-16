@@ -3,6 +3,7 @@ from datetime import datetime, date, timedelta
 import json
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from uuid import uuid4
 
 
 from django.http import HttpResponseRedirect, HttpResponseForbidden, JsonResponse, HttpResponse
@@ -2099,8 +2100,245 @@ def export_ptc_excel(request):
 # ───────── Дополнительные Django Views ─────────
 def exclude_view(request, ptc: str):
     """Страница исключений для PTC."""
+    def _is_xhr(req) -> bool:
+        return (req.headers.get("X-Requested-With") or "").lower() == "xmlhttprequest"
+
+    def _safe_int(v, default: int | None = None) -> int | None:
+        try:
+            return int(str(v).strip())
+        except Exception:
+            return default
+
+    def _parse_dt_iso(s: str) -> datetime | None:
+        s = (s or "").strip()
+        if not s:
+            return None
+        try:
+            dt = datetime.fromisoformat(s)
+        except Exception:
+            return None
+        # строки из <input datetime-local> обычно naive
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=TZ_CHISINAU)
+        else:
+            dt = dt.astimezone(TZ_CHISINAU)
+        return dt
+
+    def _build_periodic_items(
+        *,
+        gid: str,
+        param_labels: list[str],
+        date_from_str: str,
+        days_count: int,
+        time_from: str,
+        time_to: str,
+        tura: str,
+        reason: str,
+        ts: str,
+    ) -> list[dict]:
+        # базовые проверки
+        d0 = date.fromisoformat(date_from_str)
+        crosses_midnight = (time_to <= time_from)
+
+        # разворачиваем labels -> internal keys
+        keys_flat: list[str] = []
+        for lbl in param_labels:
+            for k in _norm_excl_param(lbl):
+                if k:
+                    keys_flat.append(k)
+        # убираем дубликаты, но сохраняем порядок
+        seen = set()
+        keys: list[str] = []
+        for k in keys_flat:
+            if k not in seen:
+                keys.append(k)
+                seen.add(k)
+
+        items: list[dict] = []
+        for i in range(days_count):
+            d = d0 + timedelta(days=i)
+            start_str = f"{d.isoformat()}T{time_from}"
+            end_d = (d + timedelta(days=1)) if crosses_midnight else d
+            end_str = f"{end_d.isoformat()}T{time_to}"
+
+            for k in keys:
+                it = {
+                    "param": k,
+                    "start": start_str,
+                    "end": end_str,
+                    "tura": tura,
+                    "reason": reason,
+                    "ts": ts,
+                    # маркеры для группировки/редактирования
+                    "gid": gid,
+                    "kind": "periodic",
+                }
+                # для обратной совместимости (старый формат uses 'until')
+                it["until"] = end_d.isoformat()
+                items.append(it)
+        return items
+
+    def _auto_group_existing_periodic(ptc_code: str, items: list[dict]) -> tuple[list[dict], bool]:
+        """Если ранее были созданы периодические исключения как много строк (без gid),
+        то пытаемся автоматически сгруппировать их в "одну запись" по gid.
+
+        Очень консервативно: группируем только если
+          - есть минимум 3 дня,
+          - дни подряд (без пропусков),
+          - на каждый день есть запись для каждого параметра.
+        """
+        changed = False
+        # кандидаты: без gid, есть start/end/ts
+        cand_idx = []
+        for idx, it in enumerate(items):
+            if it.get("gid"):
+                continue
+            if not (it.get("start") and it.get("end") and it.get("ts")):
+                continue
+            cand_idx.append(idx)
+
+        if not cand_idx:
+            return items, False
+
+        buckets: dict[tuple, list[int]] = {}
+        for idx in cand_idx:
+            it = items[idx]
+            start = str(it.get("start") or "")
+            end = str(it.get("end") or "")
+            ts = str(it.get("ts") or "")
+            tura = str(it.get("tura") or "")
+            reason = str(it.get("reason") or "")
+            tf = start[11:16] if len(start) >= 16 else ""
+            tt = end[11:16] if len(end) >= 16 else ""
+            if not (tf and tt):
+                continue
+            key = (ts, tura, reason, tf, tt)
+            buckets.setdefault(key, []).append(idx)
+
+        for key, idxs in buckets.items():
+            if len(idxs) < 6:
+                # минимум 3 дня * минимум 2 параметра или 6 записей
+                # (если 3 дня и 1 параметр тоже 3 записи, но это слишком легко ошибиться)
+                # поэтому считаем безопасным порогом 6
+                continue
+
+            # извлекаем даты/параметры
+            dates_by_param: dict[str, set[date]] = defaultdict(set)
+            all_dates: set[date] = set()
+
+            for idx in idxs:
+                it = items[idx]
+                p = str(it.get("param") or "").strip()
+                sd = _parse_dt_iso(str(it.get("start") or ""))
+                if not p or not sd:
+                    continue
+                d = sd.date()
+                dates_by_param[p].add(d)
+                all_dates.add(d)
+
+            if len(all_dates) < 3:
+                continue
+
+            # проверка "подряд"
+            ds = sorted(all_dates)
+            ok_consecutive = all((ds[i] - ds[i - 1]).days == 1 for i in range(1, len(ds)))
+            if not ok_consecutive:
+                continue
+
+            # проверка "полная сетка": каждый параметр присутствует каждый день
+            days_count = len(all_dates)
+            if not dates_by_param:
+                continue
+            if not all(len(v) == days_count for v in dates_by_param.values()):
+                continue
+
+            gid = uuid4().hex[:12]
+            for idx in idxs:
+                items[idx]["gid"] = gid
+                items[idx]["kind"] = "periodic"
+            changed = True
+
+        return items, changed
+
+    def _summarize_periodic_groups(items: list[dict]) -> list[dict]:
+        groups: dict[str, list[dict]] = defaultdict(list)
+        for it in items:
+            gid = str(it.get("gid") or "").strip()
+            if gid:
+                groups[gid].append(it)
+
+        out_groups: list[dict] = []
+        for gid, lst in groups.items():
+            # фильтруем только periodic-группы
+            if not any((x.get("kind") == "periodic") for x in lst):
+                continue
+
+            # параметры
+            params_keys = sorted({str(x.get("param") or "").strip() for x in lst if x.get("param")})
+            params_human = [KEY_TO_HUMAN.get(k, k) for k in params_keys]
+
+            # даты
+            start_dts = [
+                _parse_dt_iso(str(x.get("start") or ""))
+                for x in lst
+                if x.get("start")
+            ]
+            start_dts = [x for x in start_dts if x is not None]
+            if not start_dts:
+                continue
+
+            date_set = sorted({dt.date() for dt in start_dts})
+            date_from = date_set[0]
+            days_count = len(date_set)
+            date_to = date_from + timedelta(days=days_count - 1)
+
+            # берём окно времени по самой ранней записи
+            # (внутри группы окно одинаковое)
+            earliest = min((x for x in lst if x.get("start") and x.get("end")), key=lambda x: str(x.get("start")))
+            st = str(earliest.get("start") or "")
+            en = str(earliest.get("end") or "")
+            time_from = st[11:16] if len(st) >= 16 else ""
+            time_to = en[11:16] if len(en) >= 16 else ""
+            crosses_midnight = bool(time_from and time_to and (time_to <= time_from))
+
+            # мета
+            tura = str(earliest.get("tura") or "1")
+            reason = str(earliest.get("reason") or "")
+            ts = str(earliest.get("ts") or "")
+
+            out_groups.append(
+                {
+                    "gid": gid,
+                    "params_keys": params_keys,
+                    "params_human": params_human,
+                    # строка для отображения в таблице
+                    "params_display": ", ".join(params_human),
+                    # CSV-список для кнопки "Editează" (JS)
+                    "params_csv": ",".join(params_human),
+                    "date_from": date_from.isoformat(),
+                    "date_to": date_to.isoformat(),
+                    "days_count": days_count,
+                    "time_from": time_from,
+                    "time_to": time_to,
+                    "crosses_midnight": crosses_midnight,
+                    "tura": tura,
+                    "reason": reason,
+                    "ts": ts,
+                }
+            )
+
+        # сортировка: новые сверху
+        out_groups.sort(key=lambda g: g.get("ts") or "", reverse=True)
+        return out_groups
+
     exclusions = _load_json(EXCLUSIONS_PATH)
-    existing = exclusions.get(ptc, [])
+    existing_all = exclusions.get(ptc, [])
+
+    # Если ранее периодику создали «много строк» (без gid) — попробуем сгруппировать.
+    existing_all, changed = _auto_group_existing_periodic(ptc, list(existing_all))
+    if changed:
+        exclusions[ptc] = existing_all
+        _save_json(EXCLUSIONS_PATH, exclusions)
 
     possible_params = [
         "PTC ",
@@ -2134,7 +2372,9 @@ def exclude_view(request, ptc: str):
         if not can_edit:
             return HttpResponseForbidden("Редактирование запрещено для вашего IP.")
 
-        action = request.POST.get("action")
+        action = (request.POST.get("action") or "").strip()
+
+        # --- 1) обычные исключения (как было) ---
         if action == "add":
             chosen_label = (request.POST.get("param") or "").strip()
             keys = _norm_excl_param(chosen_label)
@@ -2157,7 +2397,8 @@ def exclude_view(request, ptc: str):
             else:
                 ts = timezone.now().isoformat(timespec="seconds")
 
-            new_items = existing[:]
+            # работаем с полным списком
+            new_items = list(existing_all)
             for k in keys:
                 item = {
                     "param": k,
@@ -2178,15 +2419,117 @@ def exclude_view(request, ptc: str):
 
             exclusions[ptc] = new_items
             _save_json(EXCLUSIONS_PATH, exclusions)
+            if _is_xhr(request):
+                return JsonResponse({"ok": True})
             return HttpResponseRedirect(request.path)
 
         elif action == "delete":
-            idx = int(request.POST.get("index", -1))
-            if 0 <= idx < len(existing):
-                del existing[idx]
-                exclusions[ptc] = existing
+            idx = _safe_int(request.POST.get("index"), -1)
+            if idx is not None and 0 <= idx < len(existing_all):
+                del existing_all[idx]
+                exclusions[ptc] = existing_all
                 _save_json(EXCLUSIONS_PATH, exclusions)
+            if _is_xhr(request):
+                return JsonResponse({"ok": True})
             return HttpResponseRedirect(request.path)
+
+        # --- 2) периодические исключения (одна "группа" вместо 100 строк в UI) ---
+        elif action in ("add_periodic", "update_group"):
+            # параметры могут прийти как param[]=... или param=... несколько раз
+            param_labels = request.POST.getlist("param") or request.POST.getlist("params")
+            param_labels = [(x or "").strip() for x in param_labels if (x or "").strip()]
+            if not param_labels:
+                return JsonResponse({"ok": False, "error": "Selectează cel puțin un parametru."}, status=400)
+
+            date_from_str = (request.POST.get("date_from") or "").strip()
+            days_count = _safe_int(request.POST.get("days_count"), None)
+            time_from = (request.POST.get("time_from") or "").strip()
+            time_to = (request.POST.get("time_to") or "").strip()
+            tura = (request.POST.get("tura") or "1").strip() or "1"
+            reason = (request.POST.get("reason") or "").strip()
+
+            if not date_from_str:
+                return JsonResponse({"ok": False, "error": "Completează De la (data)."}, status=400)
+            if not days_count or days_count < 1:
+                return JsonResponse({"ok": False, "error": "Număr de zile trebuie să fie >= 1."}, status=400)
+            if not time_from or not time_to:
+                return JsonResponse({"ok": False, "error": "Completează De la (ora) și Până la (ora)."}, status=400)
+
+            # ограничение безопасности
+            keys_cnt = 0
+            for lbl in param_labels:
+                keys_cnt += len(_norm_excl_param(lbl))
+            total = keys_cnt * days_count
+            MAX_TOTAL = 500
+            if total > MAX_TOTAL:
+                return JsonResponse(
+                    {"ok": False, "error": f"Prea multe excluderi: {total}. Maxim permis: {MAX_TOTAL}."},
+                    status=400,
+                )
+
+            # timestamp в локальной зоне
+            try:
+                tz_local = ZoneInfo(settings.LOCAL_TIME_ZONE)
+            except Exception:
+                tz_local = None
+            if tz_local is not None:
+                ts = datetime.now(tz_local).isoformat(timespec="seconds")
+            else:
+                ts = timezone.now().isoformat(timespec="seconds")
+
+            # gid
+            gid = (request.POST.get("gid") or "").strip()
+            if action == "add_periodic" or not gid:
+                gid = uuid4().hex[:12]
+
+            # если update_group — удаляем старую группу
+            if action == "update_group":
+                existing_all[:] = [x for x in existing_all if str(x.get("gid") or "") != gid]
+
+            periodic_items = _build_periodic_items(
+                gid=gid,
+                param_labels=param_labels,
+                date_from_str=date_from_str,
+                days_count=days_count,
+                time_from=time_from,
+                time_to=time_to,
+                tura=tura,
+                reason=reason,
+                ts=ts,
+            )
+
+            exclusions[ptc] = list(existing_all) + periodic_items
+            _save_json(EXCLUSIONS_PATH, exclusions)
+
+            if _is_xhr(request):
+                return JsonResponse({"ok": True, "gid": gid})
+            return HttpResponseRedirect(request.path)
+
+        elif action == "delete_group":
+            gid = (request.POST.get("gid") or "").strip()
+            if gid:
+                existing_all[:] = [x for x in existing_all if str(x.get("gid") or "") != gid]
+                exclusions[ptc] = existing_all
+                _save_json(EXCLUSIONS_PATH, exclusions)
+
+            if _is_xhr(request):
+                return JsonResponse({"ok": True})
+            return HttpResponseRedirect(request.path)
+
+        # неизвестное действие
+        return JsonResponse({"ok": False, "error": "Unknown action"}, status=400)
+
+    # --- данные для шаблона ---
+    # single exclusions = всё, что НЕ относится к periodic-группам (нет gid)
+    single_exclusions: list[dict] = []
+    for idx, it in enumerate(existing_all):
+        if it.get("gid"):
+            continue
+        d = dict(it)
+        d["idx"] = idx
+        single_exclusions.append(d)
+
+    periodic_groups = _summarize_periodic_groups(existing_all)
 
     tomorrow = timezone.localdate() + timedelta(days=1)
 
@@ -2195,7 +2538,8 @@ def exclude_view(request, ptc: str):
         "monitoring/exclude_page.html",
         {
             "ptc": ptc,
-            "exclusions": existing,
+            "exclusions": single_exclusions,
+            "periodic_groups": periodic_groups,
             "params": possible_params,
             "tomorrow_iso": tomorrow.isoformat(),
             "can_edit": can_edit,
